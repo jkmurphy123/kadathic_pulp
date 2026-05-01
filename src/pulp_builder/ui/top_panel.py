@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
+from nicegui import events
 from nicegui import ui
 
 
 @ui.refreshable
-def render_top_panel(state, on_import, on_save, on_load, on_export) -> None:
+def render_top_panel(state, on_title_change: Callable[[str], None], on_import, on_save, on_load, on_export) -> None:
     """Render top project metadata and control buttons."""
 
     project = state.current_project
@@ -15,10 +18,17 @@ def render_top_panel(state, on_import, on_save, on_load, on_export) -> None:
     source_file = project.import_info.source_filename if project else "(none)"
     dirty_label = "Unsaved Changes" if project and project.dirty else "Saved"
 
-    with ui.card().classes("w-full py-2"):
-        with ui.row().classes("w-full items-center justify-between gap-4"):
-            with ui.row().classes("items-center gap-6"):
-                ui.label(f"Project: {project_name}").classes("text-sm")
+    with ui.card().classes("w-full py-2 bg-slate-50"):
+        with ui.row().classes("w-full items-center justify-between gap-4 no-wrap"):
+            with ui.row().classes("items-center gap-4 no-wrap"):
+                def _handle_title_change(event: events.ValueChangeEventArguments) -> None:
+                    on_title_change(event.value or "")
+
+                ui.input(
+                    "Project",
+                    value=project_name if project else "",
+                    on_change=_handle_title_change,
+                ).props("dense outlined").classes("min-w-[16rem]")
                 ui.label(f"Story Form: {story_form}").classes("text-sm")
                 ui.label(f"Imported File: {source_file}").classes("text-sm")
                 state_classes = "text-amber-700" if dirty_label == "Unsaved Changes" else "text-green-700"

@@ -11,6 +11,7 @@ Python + NiceGUI application for turning rough story ideas into structured pulp 
 - Milestone 5: Import Story dialog with story-form selection, `.txt` upload, parser integration, and status feedback
 - Milestone 6: Editable detail panel, dirty-state tracking, and Save/Load Project actions from the UI
 - Milestone 7: Export Story dialog integrated with text exporter and status feedback
+- Milestone 8: Placeholder/completion badges, project title editing, cleaner UI styling, and parser interface extension points
 
 ## Local Setup
 

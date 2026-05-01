@@ -96,6 +96,7 @@ class LayoutController:
 
         render_top_panel.refresh(
             self.state,
+            self.on_title_change,
             self.on_import,
             self.on_save,
             self.on_load,
@@ -103,6 +104,30 @@ class LayoutController:
         )
         render_structure_panel.refresh(self.state, self.on_select_node)
         render_detail_panel.refresh(self.state, self.on_story_text_change)
+        render_status_panel.refresh(self.state)
+
+    def on_title_change(self, title: str) -> None:
+        project = self.state.current_project
+        if not project:
+            return
+
+        normalized_title = (title or "").strip() or "Untitled Project"
+        if normalized_title == project.title:
+            return
+
+        project.title = normalized_title
+        project.dirty = True
+        project.updated_at = datetime.now(timezone.utc)
+        self.state.status_bus.info(f"Project title updated to '{normalized_title}'.")
+        render_top_panel.refresh(
+            self.state,
+            self.on_title_change,
+            self.on_import,
+            self.on_save,
+            self.on_load,
+            self.on_export,
+        )
+        render_status_panel.refresh(self.state)
 
     def on_import(self) -> None:
         options = {story_form["id"]: story_form["label"] for story_form in self._registry.list_forms()}
@@ -273,6 +298,7 @@ class LayoutController:
     def refresh_all(self) -> None:
         render_top_panel.refresh(
             self.state,
+            self.on_title_change,
             self.on_import,
             self.on_save,
             self.on_load,
@@ -306,10 +332,21 @@ def build_layout(state: AppState) -> None:
     """Render the four-panel app shell."""
 
     controller = LayoutController(state)
+    ui.add_css(
+        """
+        body {
+            background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+        }
+        .q-card {
+            border-radius: 10px;
+        }
+        """
+    )
 
     with ui.column().classes("w-full h-screen p-2 gap-2"):
         render_top_panel(
             state,
+            controller.on_title_change,
             controller.on_import,
             controller.on_save,
             controller.on_load,

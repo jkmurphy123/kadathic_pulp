@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from pulp_builder.models.story_project import ImportInfo, StoryProject
-from pulp_builder.services.parser import DeterministicParser
+from pulp_builder.services.parser import DeterministicParser, StoryParser
 from pulp_builder.structures.registry import StoryStructureRegistry
 from pulp_builder.utils.ids import make_project_id
 
@@ -17,7 +17,7 @@ class ImportService:
     def __init__(
         self,
         registry: StoryStructureRegistry | None = None,
-        parser: DeterministicParser | None = None,
+        parser: StoryParser | None = None,
     ) -> None:
         self._registry = registry or StoryStructureRegistry()
         self._parser = parser or DeterministicParser()

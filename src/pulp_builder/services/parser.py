@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Protocol
 
 from pulp_builder.models.story_structure import ExtractedEvidence, StoryNode
 
@@ -88,6 +89,19 @@ class ParseResult:
 
     raw_story_text: str
     root_nodes: list[StoryNode]
+
+
+class StoryParser(Protocol):
+    """Parser interface used by import service.
+
+    This allows swapping the deterministic parser with future LLM-assisted parsers
+    without changing ImportService or UI code.
+    """
+
+    version: str
+
+    def parse(self, raw_story_text: str, story_form: dict) -> ParseResult:
+        """Parse source text into structured nodes."""
 
 
 class DeterministicParser:

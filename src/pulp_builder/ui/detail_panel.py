@@ -11,7 +11,7 @@ from nicegui import events, ui
 def render_detail_panel(state, on_story_text_change: Callable[[str], None]) -> None:
     """Render selected component details."""
 
-    with ui.card().classes("w-full h-full overflow-auto"):
+    with ui.card().classes("w-full h-full overflow-auto bg-white"):
         ui.label("Component Details").classes("text-base font-medium")
 
         project = state.current_project
@@ -26,8 +26,14 @@ def render_detail_panel(state, on_story_text_change: Callable[[str], None]) -> N
             ui.label(f"Title: {node.title}").classes("text-sm")
             ui.label(f"Quarter: {parent.title if parent else '(none)'}").classes("text-sm")
             ui.label(f"Description: {node.description or '(none)'}").classes("text-sm")
-            ui.label(f"Required: {'Yes' if node.required else 'No'}").classes("text-sm")
-            ui.label(f"Placeholder: {'Yes' if node.is_placeholder else 'No'}").classes("text-sm")
+            with ui.row().classes("gap-2 items-center"):
+                ui.badge("Required" if node.required else "Optional").props(
+                    "color=primary" if node.required else "outline"
+                )
+                ui.badge("Placeholder" if node.is_placeholder else "Has Text").props(
+                    "color=warning" if node.is_placeholder else "color=positive"
+                )
+                ui.badge(f"State: {node.completion_state}").props("outline")
             if node.missing_reason.strip():
                 ui.label(f"Missing Reason: {node.missing_reason}").classes("text-sm text-amber-700")
             ui.label(f"Guidance: {node.guidance_prompt or '(none)'}").classes("text-sm")
