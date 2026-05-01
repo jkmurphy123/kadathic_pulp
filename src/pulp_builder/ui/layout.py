@@ -15,6 +15,7 @@ from pulp_builder.services.app_config_store import AppConfig, AppConfigStore
 from pulp_builder.services.exporter import StoryExporter
 from pulp_builder.services.importer import ImportService
 from pulp_builder.services.llm_connection import LLMConnectionService
+from pulp_builder.services.llm_rewriter import LLMRewriteService, RewriteRequest
 from pulp_builder.services.project_store import ProjectStore
 from pulp_builder.services.status_bus import StatusBus
 from pulp_builder.structures.registry import StoryStructureRegistry
@@ -74,6 +75,7 @@ class LayoutController:
         self._exporter = StoryExporter()
         self._import_service = ImportService()
         self._llm_connection = LLMConnectionService()
+        self._llm_rewriter = LLMRewriteService(self._llm_connection)
         self._project_store = ProjectStore()
         self._registry = StoryStructureRegistry()
         self._ensure_llm_defaults()
@@ -89,7 +91,7 @@ class LayoutController:
         if self.state.current_project:
             self.state.current_project.selected_node_id = node_id
         self.state.status_bus.info(f"Selected node: {node_id}")
-        render_detail_panel.refresh(self.state, self.on_story_text_change)
+        render_detail_panel.refresh(self.state, self.on_story_text_change, self.on_llm_rewrite_selected)
         render_status_panel.refresh(self.state)
 
     def on_story_text_change(self, story_text: str) -> None:
@@ -130,7 +132,53 @@ class LayoutController:
             self.on_export,
         )
         render_structure_panel.refresh(self.state, self.on_select_node)
-        render_detail_panel.refresh(self.state, self.on_story_text_change)
+        render_detail_panel.refresh(self.state, self.on_story_text_change, self.on_llm_rewrite_selected)
+        render_status_panel.refresh(self.state)
+
+    async def on_llm_rewrite_selected(self) -> None:
+        project = self.state.current_project
+        node = self.state.selected_node()
+        if not project or not node:
+            self.state.status_bus.warning("Select a story component to rewrite.")
+            render_status_panel.refresh(self.state)
+            return
+        if not node.story_text.strip():
+            self.state.status_bus.warning("Story text is empty; nothing to rewrite.")
+            render_status_panel.refresh(self.state)
+            return
+
+        provider_id = self._current_llm_provider_id()
+        model = self._current_llm_model()
+        self.state.status_bus.info(f"LLM rewrite started ({provider_id}/{model})...")
+        render_status_panel.refresh(self.state)
+
+        request = RewriteRequest(
+            story_form_id=project.story_form_id,
+            story_form_label=project.story_form_label,
+            component_title=node.title,
+            component_description=node.description,
+            guidance_prompt=node.guidance_prompt,
+            source_text=node.story_text,
+        )
+        try:
+            rewritten = await run.io_bound(
+                self._llm_rewriter.rewrite,
+                provider_id=provider_id,
+                model=model,
+                request=request,
+            )
+        except Exception as exc:
+            self.state.status_bus.error(f"LLM rewrite failed: {exc}")
+            render_status_panel.refresh(self.state)
+            return
+
+        if not rewritten.strip():
+            self.state.status_bus.warning("LLM rewrite returned empty text.")
+            render_status_panel.refresh(self.state)
+            return
+
+        self.on_story_text_change(rewritten)
+        self.state.status_bus.info(f"LLM rewrite applied to '{node.title}'.")
         render_status_panel.refresh(self.state)
 
     def on_import(self) -> None:
@@ -343,6 +391,7 @@ class LayoutController:
                 self.state.current_project = project
                 self.state.selected_node_id = project.selected_node_id
                 self._ensure_llm_defaults()
+                self._save_app_llm_preferences(project)
                 self.state.status_bus.info(f"Imported tagged draft {uploaded_name}.")
                 dialog.close()
                 self.refresh_all()
@@ -461,7 +510,7 @@ class LayoutController:
             self.on_export,
         )
         render_structure_panel.refresh(self.state, self.on_select_node)
-        render_detail_panel.refresh(self.state, self.on_story_text_change)
+        render_detail_panel.refresh(self.state, self.on_story_text_change, self.on_llm_rewrite_selected)
         render_status_panel.refresh(self.state)
 
     @staticmethod
@@ -636,6 +685,6 @@ def build_layout(state: AppState) -> None:
             with ui.column().classes("h-full min-h-0").style("flex: 0 0 30%; min-width: 260px;"):
                 render_structure_panel(state, controller.on_select_node)
             with ui.column().classes("h-full min-h-0").style("flex: 1 1 auto; min-width: 0;"):
-                render_detail_panel(state, controller.on_story_text_change)
+                render_detail_panel(state, controller.on_story_text_change, controller.on_llm_rewrite_selected)
 
         render_status_panel(state)

@@ -8,7 +8,11 @@ from nicegui import events, ui
 
 
 @ui.refreshable
-def render_detail_panel(state, on_story_text_change: Callable[[str], None]) -> None:
+def render_detail_panel(
+    state,
+    on_story_text_change: Callable[[str], None],
+    on_llm_rewrite: Callable[[], None],
+) -> None:
     """Render selected component details."""
 
     with ui.card().classes("w-full h-full overflow-auto bg-white"):
@@ -55,3 +59,4 @@ def render_detail_panel(state, on_story_text_change: Callable[[str], None]) -> N
             ui.textarea("Story Text", value=story_text_value, on_change=_handle_change).props("autogrow").classes(
                 "w-full"
             )
+            ui.button("LLM Rewrite", on_click=on_llm_rewrite).props("outline")

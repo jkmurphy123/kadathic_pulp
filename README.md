@@ -61,3 +61,11 @@ python -m pulp_builder.app
   - `## Quarter Name`
   - `- Component Title: summary text`
   - `- Story Text: full section text` (applies to the most recent component line)
+
+## LLM Rewrite
+
+- In the right detail panel, use `LLM Rewrite` under the story text box.
+- It rewrites the current text using:
+  - selected project story form style
+  - currently selected Lester Dent component title/description/guidance
+  - currently selected LLM provider/model
