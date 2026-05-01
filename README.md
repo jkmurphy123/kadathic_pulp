@@ -12,6 +12,7 @@ Python + NiceGUI application for turning rough story ideas into structured pulp 
 - Milestone 6: Editable detail panel, dirty-state tracking, and Save/Load Project actions from the UI
 - Milestone 7: Export Story dialog integrated with text exporter and status feedback
 - Milestone 8: Placeholder/completion badges, project title editing, cleaner UI styling, and parser interface extension points
+- Milestone 9: `agent_foundry` LLM integration with provider/model dropdowns and Test LLM Connection button
 
 ## Local Setup
 
@@ -19,6 +20,7 @@ Python + NiceGUI application for turning rough story ideas into structured pulp 
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
+pip install -e /home/ubuntu/projects/kadathic_core
 ```
 
 ## Run Tests
@@ -32,3 +34,11 @@ pytest
 ```bash
 python -m pulp_builder.app
 ```
+
+## LLM Provider Notes
+
+- `Mock` works offline and is useful for validating UI wiring.
+- `Ollama` uses `OLLAMA_BASE_URL` (default `http://localhost:11434`).
+- `OpenAI-Compatible` uses:
+  - `OPENAI_COMPAT_BASE_URL` (default `https://api.openai.com`)
+  - `OPENAI_COMPAT_API_KEY_ENV` (default `OPENAI_API_KEY`)

@@ -13,6 +13,7 @@ from pulp_builder.models.story_project import StoryProject
 from pulp_builder.models.story_structure import StoryNode
 from pulp_builder.services.exporter import StoryExporter
 from pulp_builder.services.importer import ImportService
+from pulp_builder.services.llm_connection import LLMConnectionService
 from pulp_builder.services.project_store import ProjectStore
 from pulp_builder.services.status_bus import StatusBus
 from pulp_builder.structures.registry import StoryStructureRegistry
@@ -53,8 +54,10 @@ class LayoutController:
         self.state = state
         self._exporter = StoryExporter()
         self._import_service = ImportService()
+        self._llm_connection = LLMConnectionService()
         self._project_store = ProjectStore()
         self._registry = StoryStructureRegistry()
+        self._ensure_llm_defaults()
 
     def on_select_node(self, raw_node_id: Any) -> None:
         node_id = self._normalize_node_id(raw_node_id)
@@ -96,7 +99,12 @@ class LayoutController:
 
         render_top_panel.refresh(
             self.state,
+            self._provider_options(),
+            self._model_options(),
             self.on_title_change,
+            self.on_llm_provider_change,
+            self.on_llm_model_change,
+            self.on_test_llm_connection,
             self.on_import,
             self.on_save,
             self.on_load,
@@ -121,7 +129,12 @@ class LayoutController:
         self.state.status_bus.info(f"Project title updated to '{normalized_title}'.")
         render_top_panel.refresh(
             self.state,
+            self._provider_options(),
+            self._model_options(),
             self.on_title_change,
+            self.on_llm_provider_change,
+            self.on_llm_model_change,
+            self.on_test_llm_connection,
             self.on_import,
             self.on_save,
             self.on_load,
@@ -153,6 +166,7 @@ class LayoutController:
 
         self.state.current_project = project
         self.state.selected_node_id = project.selected_node_id
+        self._ensure_llm_defaults()
 
         placeholders = sum(
             1
@@ -250,6 +264,7 @@ class LayoutController:
 
                 self.state.current_project = uploaded_project
                 self.state.selected_node_id = uploaded_project.selected_node_id
+                self._ensure_llm_defaults()
                 self.state.status_bus.info(f"Loaded project from {uploaded_name}.")
                 dialog.close()
                 self.refresh_all()
@@ -298,7 +313,12 @@ class LayoutController:
     def refresh_all(self) -> None:
         render_top_panel.refresh(
             self.state,
+            self._provider_options(),
+            self._model_options(),
             self.on_title_change,
+            self.on_llm_provider_change,
+            self.on_llm_model_change,
+            self.on_test_llm_connection,
             self.on_import,
             self.on_save,
             self.on_load,
@@ -327,6 +347,99 @@ class LayoutController:
                     return normalized
         return None
 
+    def on_llm_provider_change(self, provider_id: str) -> None:
+        project = self.state.current_project
+        if not project or not provider_id:
+            return
+
+        project.llm_provider = provider_id
+        suggested_models = self._llm_connection.model_options_for_provider(provider_id)
+        if not project.llm_model or (suggested_models and project.llm_model not in suggested_models):
+            project.llm_model = self._llm_connection.default_model_for_provider(provider_id)
+        project.dirty = True
+        project.updated_at = datetime.now(timezone.utc)
+        self.state.status_bus.info(f"LLM provider set to {provider_id}.")
+
+        render_top_panel.refresh(
+            self.state,
+            self._provider_options(),
+            self._model_options(),
+            self.on_title_change,
+            self.on_llm_provider_change,
+            self.on_llm_model_change,
+            self.on_test_llm_connection,
+            self.on_import,
+            self.on_save,
+            self.on_load,
+            self.on_export,
+        )
+        render_status_panel.refresh(self.state)
+
+    def on_llm_model_change(self, model: str) -> None:
+        project = self.state.current_project
+        if not project or not model:
+            return
+
+        project.llm_model = model
+        project.dirty = True
+        project.updated_at = datetime.now(timezone.utc)
+        self.state.status_bus.info(f"LLM model set to {model}.")
+
+        render_top_panel.refresh(
+            self.state,
+            self._provider_options(),
+            self._model_options(),
+            self.on_title_change,
+            self.on_llm_provider_change,
+            self.on_llm_model_change,
+            self.on_test_llm_connection,
+            self.on_import,
+            self.on_save,
+            self.on_load,
+            self.on_export,
+        )
+        render_status_panel.refresh(self.state)
+
+    def on_test_llm_connection(self) -> None:
+        project = self.state.current_project
+        if not project:
+            self.state.status_bus.warning("No active project to test LLM connection.")
+            render_status_panel.refresh(self.state)
+            return
+
+        provider_id = project.llm_provider or self._llm_connection.default_provider_id()
+        model = project.llm_model or self._llm_connection.default_model_for_provider(provider_id)
+        result = self._llm_connection.test_connection(provider_id=provider_id, model=model)
+
+        if result.success:
+            preview = f" Response: {result.response_preview}" if result.response_preview else ""
+            self.state.status_bus.info(
+                f"LLM test succeeded ({result.provider_id}/{result.model}).{preview}"
+            )
+        else:
+            self.state.status_bus.error(
+                f"LLM test failed ({result.provider_id}/{result.model}): {result.message}"
+            )
+        render_status_panel.refresh(self.state)
+
+    def _ensure_llm_defaults(self) -> None:
+        project = self.state.current_project
+        if not project:
+            return
+
+        if not project.llm_provider:
+            project.llm_provider = self._llm_connection.default_provider_id()
+        if not project.llm_model:
+            project.llm_model = self._llm_connection.default_model_for_provider(project.llm_provider)
+
+    def _provider_options(self) -> dict[str, str]:
+        return self._llm_connection.list_provider_options()
+
+    def _model_options(self) -> list[str]:
+        project = self.state.current_project
+        provider_id = project.llm_provider if project and project.llm_provider else self._llm_connection.default_provider_id()
+        return self._llm_connection.model_options_for_provider(provider_id)
+
 
 def build_layout(state: AppState) -> None:
     """Render the four-panel app shell."""
@@ -346,7 +459,12 @@ def build_layout(state: AppState) -> None:
     with ui.column().classes("w-full h-screen p-2 gap-2"):
         render_top_panel(
             state,
+            controller._provider_options(),
+            controller._model_options(),
             controller.on_title_change,
+            controller.on_llm_provider_change,
+            controller.on_llm_model_change,
+            controller.on_test_llm_connection,
             controller.on_import,
             controller.on_save,
             controller.on_load,

@@ -19,6 +19,8 @@ def test_project_store_round_trip_preserves_project_data(tmp_path) -> None:
     first_component.story_text = "A storm drives the crew into black waters."
     first_component.is_placeholder = False
     project.selected_node_id = first_component.node_id
+    project.llm_provider = "mock"
+    project.llm_model = "mock-model"
     project.dirty = True
 
     store = ProjectStore()
@@ -31,5 +33,7 @@ def test_project_store_round_trip_preserves_project_data(tmp_path) -> None:
     assert loaded.story_form_id == "hybrid_weird_adventure"
     assert loaded.raw_story_text.startswith("Captain Ives seeks")
     assert loaded.selected_node_id == first_component.node_id
+    assert loaded.llm_provider == "mock"
+    assert loaded.llm_model == "mock-model"
     assert loaded.root_nodes[0].children[0].story_text == "A storm drives the crew into black waters."
     assert loaded.dirty is False
