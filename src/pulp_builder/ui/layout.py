@@ -11,6 +11,7 @@ from nicegui import events, ui
 
 from pulp_builder.models.story_project import StoryProject
 from pulp_builder.models.story_structure import StoryNode
+from pulp_builder.services.exporter import StoryExporter
 from pulp_builder.services.importer import ImportService
 from pulp_builder.services.project_store import ProjectStore
 from pulp_builder.services.status_bus import StatusBus
@@ -50,6 +51,7 @@ class LayoutController:
 
     def __init__(self, state: AppState) -> None:
         self.state = state
+        self._exporter = StoryExporter()
         self._import_service = ImportService()
         self._project_store = ProjectStore()
         self._registry = StoryStructureRegistry()
@@ -234,8 +236,39 @@ class LayoutController:
         dialog.open()
 
     def on_export(self) -> None:
-        self.state.status_bus.info("Export from UI is planned for Milestone 7.")
-        render_status_panel.refresh(self.state)
+        project = self.state.current_project
+        if not project:
+            self.state.status_bus.warning("No active project to export.")
+            render_status_panel.refresh(self.state)
+            return
+
+        default_name = self._default_project_filename(project)
+
+        with ui.dialog() as dialog, ui.card().classes("w-[36rem] max-w-full"):
+            ui.label("Export Story").classes("text-lg font-medium")
+            path_input = ui.input("Target Text Path", value=f"exports/{default_name}.txt").classes("w-full")
+
+            def handle_export_click() -> None:
+                target_path = (path_input.value or "").strip()
+                if not target_path:
+                    ui.notify("Provide a target path.", type="warning")
+                    return
+                try:
+                    output_path = self._exporter.export_to_file(project, target_path)
+                except Exception as exc:
+                    self.state.status_bus.error(f"Failed to export story: {exc}")
+                    render_status_panel.refresh(self.state)
+                    return
+
+                self.state.status_bus.info(f"Exported story to {output_path}.")
+                dialog.close()
+                render_status_panel.refresh(self.state)
+
+            with ui.row().classes("w-full justify-end gap-2"):
+                ui.button("Cancel", on_click=dialog.close).props("outline")
+                ui.button("Export", on_click=handle_export_click)
+
+        dialog.open()
 
     def refresh_all(self) -> None:
         render_top_panel.refresh(
