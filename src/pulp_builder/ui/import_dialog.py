@@ -7,6 +7,23 @@ from collections.abc import Callable
 from nicegui import events, ui
 
 
+async def _extract_upload_payload(event: events.UploadEventArguments) -> tuple[str, bytes]:
+    """Return uploaded filename and bytes across NiceGUI upload event variants."""
+
+    if hasattr(event, "file") and event.file is not None:
+        file_obj = event.file
+        return file_obj.name, await file_obj.read()
+
+    # Backward compatibility for older event variants.
+    if hasattr(event, "name") and hasattr(event, "content"):
+        content = event.content
+        if hasattr(content, "seek"):
+            content.seek(0)
+        return event.name, content.read()
+
+    return "", b""
+
+
 def show_import_dialog(
     story_form_options: dict[str, str],
     has_unsaved_changes: bool,
@@ -20,6 +37,7 @@ def show_import_dialog(
 
     uploaded_name = ""
     uploaded_text = ""
+    uploaded_size = 0
 
     with ui.dialog() as dialog, ui.card().classes("w-[40rem] max-w-full"):
         ui.label("Import Story").classes("text-lg font-medium")
@@ -35,22 +53,32 @@ def show_import_dialog(
 
         upload_status = ui.label("No .txt file selected.").classes("text-sm text-gray-700")
 
-        def handle_upload(event: events.UploadEventArguments) -> None:
-            nonlocal uploaded_name, uploaded_text
-            uploaded_name = event.name
+        async def handle_upload(event: events.UploadEventArguments) -> None:
+            nonlocal uploaded_name, uploaded_text, uploaded_size
+            uploaded_name, raw_bytes = await _extract_upload_payload(event)
 
             if not uploaded_name.lower().endswith(".txt"):
                 uploaded_text = ""
+                uploaded_size = 0
                 upload_status.set_text("Please upload a .txt file.")
                 return
 
-            raw_bytes = event.content.read()
+            uploaded_size = len(raw_bytes)
+
+            if uploaded_size == 0:
+                uploaded_text = ""
+                upload_status.set_text(f"Loaded: {uploaded_name} (0 bytes)")
+                return
+
             try:
                 uploaded_text = raw_bytes.decode("utf-8")
             except UnicodeDecodeError:
-                uploaded_text = raw_bytes.decode("utf-8", errors="replace")
+                try:
+                    uploaded_text = raw_bytes.decode("latin-1")
+                except UnicodeDecodeError:
+                    uploaded_text = raw_bytes.decode("utf-8", errors="replace")
 
-            upload_status.set_text(f"Loaded: {uploaded_name} ({len(uploaded_text)} chars)")
+            upload_status.set_text(f"Loaded: {uploaded_name} ({uploaded_size} bytes)")
 
         ui.upload(
             on_upload=handle_upload,
@@ -68,7 +96,7 @@ def show_import_dialog(
                 ui.notify("Select a story form.", type="warning")
                 return
 
-            if not uploaded_name or not uploaded_text.strip():
+            if not uploaded_name or uploaded_size == 0 or not uploaded_text.strip():
                 ui.notify("Upload a non-empty .txt file.", type="warning")
                 return
 

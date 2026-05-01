@@ -28,4 +28,10 @@ class ProjectStore:
 
         path = Path(source_path)
         raw = path.read_text(encoding="utf-8")
-        return StoryProject.model_validate_json(raw)
+        return self.load_json(raw)
+
+    @staticmethod
+    def load_json(raw_json: str) -> StoryProject:
+        """Load and validate a project from raw JSON text."""
+
+        return StoryProject.model_validate_json(raw_json)

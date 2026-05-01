@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from nicegui import ui
+from collections.abc import Callable
+
+from nicegui import events, ui
 
 
 @ui.refreshable
-def render_detail_panel(state) -> None:
+def render_detail_panel(state, on_story_text_change: Callable[[str], None]) -> None:
     """Render selected component details."""
 
-    with ui.card().classes("w-full h-full"):
+    with ui.card().classes("w-full h-full overflow-auto"):
         ui.label("Component Details").classes("text-base font-medium")
 
         project = state.current_project
@@ -40,5 +42,10 @@ def render_detail_panel(state) -> None:
                 for evidence in node.extracted_evidence:
                     ui.label(f"- {evidence.source}: {evidence.text}").classes("text-sm")
 
+            def _handle_change(event: events.ValueChangeEventArguments) -> None:
+                on_story_text_change(event.value or "")
+
             story_text_value = node.story_text if node.story_text else ""
-            ui.textarea("Story Text", value=story_text_value).props("readonly autogrow").classes("w-full")
+            ui.textarea("Story Text", value=story_text_value, on_change=_handle_change).props("autogrow").classes(
+                "w-full"
+            )
