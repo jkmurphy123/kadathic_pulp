@@ -1,0 +1,36 @@
+Project: horror1_project.txt
+Source: horror1_project.txt
+Provider: openai_compatible
+Model: gpt-4.1-mini
+
+=== LLM FIRST-PASS BREAKDOWN ===
+# Recommended Lester Dent Breakdown
+## Opening Menace
+- Hook with Menace: Visiting doctor is introduced to an unsettling young female patient obsessively clutching a handmade doll in a grim asylum.
+- Hero Desire: The doctor wants to uncover the girl's story to understand the cause of her madness.
+- Initial Trouble: The girl refuses to speak unless the doll is taken from her; the director applies subtle threat to coerce cooperation.
+- Hint of Deeper Menace: The girl’s strange language and eerie attachment to the doll hint at supernatural forces linked to her twin’s death.
+
+## Deepening Trouble
+- First Attempt: The girl begins to recount her past, describing close bond with her twin and the sister’s slow death from consumption.
+- First Complication: She pauses and resists revealing painful details; the doctor forces her by threatening to keep the doll away longer.
+- Clue or Pattern: Her twin’s death, refusal to accept loss, and creation of the doll point to occult denial of death and possible necromancy.
+- Rising Stakes: The girl’s madness escalated to grave desecration and violent removal of twin’s heart, shocking the town and implicating her in a horrific crime.
+
+## Trap and Terrible Revelation
+- Reversal: What seemed like innocence and grief conceals a dangerous obsession crossing into violent taboo.
+- Betrayal or False Safety: Her father suspects and confronts her, uncovering evidence of grave violation, breaking the fragile trust in family.
+- Terrible Revelation: The sister’s death was not the end; the girl claims she needed to burn the heart so the twin could find peace—implying dark necromantic beliefs or practices.
+- Deathtrap or Contact: The girl is confined to the asylum, where madness and possibly dark forces imprison her, setting the stage for fatal consequences.
+
+## Payoff and Final Sting
+- Final Confrontation: The doctor presses the girl once more about the heart’s fate; she refuses to answer, clutching her doll tightly, denying closure.
+- Cost of Survival: The cost is her sanity, freedom, and permanent institutionalization; her family is torn apart by scandal and horror.
+- Resolution: The girl remains isolated in the asylum, a tragic figure haunted by unseen horrors, and the doctor leaves with unanswered questions.
+- Final Sting: The doll—a silent, ominous relic—remains with her, suggesting lingering supernatural menace or unresolved dark secrets.
+
+## Notes
+- Key names: Unnamed visiting doctor, young teenage patient (unnamed), patient’s twin sister, father, mother, asylum director.
+- Key settings: Insane asylum, patient rooms, graveyard, family home cellar.
+- Core events: Tour of asylum; patient’s coerced confession; twin’s death and burial; grave desecration; trial and institutionalization.
+- Ending/cost signals: Madness and silence replace story’s resolution; haunting doll symbolizes ongoing menace; doctor’s unanswered question leaves mystery open.

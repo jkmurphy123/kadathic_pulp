@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import re
 from typing import Any
 
-from nicegui import events, ui
+from nicegui import events, run, ui
 
 from pulp_builder.models.story_project import StoryProject
 from pulp_builder.models.story_structure import StoryNode
@@ -22,6 +22,22 @@ from pulp_builder.ui.import_dialog import show_import_dialog
 from pulp_builder.ui.status_panel import render_status_panel
 from pulp_builder.ui.structure_panel import render_structure_panel
 from pulp_builder.ui.top_panel import render_top_panel
+
+
+async def _extract_upload_payload(event: events.UploadEventArguments) -> tuple[str, bytes]:
+    """Return uploaded filename and bytes across NiceGUI upload event variants."""
+
+    if hasattr(event, "file") and event.file is not None:
+        file_obj = event.file
+        return file_obj.name, await file_obj.read()
+
+    if hasattr(event, "name") and hasattr(event, "content"):
+        content = event.content
+        if hasattr(content, "seek"):
+            content.seek(0)
+        return event.name, content.read()
+
+    return "", b""
 
 
 @dataclass(slots=True)
@@ -106,6 +122,7 @@ class LayoutController:
             self.on_llm_model_change,
             self.on_test_llm_connection,
             self.on_import,
+            self.on_import_tagged_draft,
             self.on_save,
             self.on_load,
             self.on_export,
@@ -136,6 +153,7 @@ class LayoutController:
             self.on_llm_model_change,
             self.on_test_llm_connection,
             self.on_import,
+            self.on_import_tagged_draft,
             self.on_save,
             self.on_load,
             self.on_export,
@@ -146,18 +164,37 @@ class LayoutController:
         options = {story_form["id"]: story_form["label"] for story_form in self._registry.list_forms()}
         has_unsaved = bool(self.state.current_project and self.state.current_project.dirty)
 
+        provider_id = self._current_llm_provider_id()
+        model = self._current_llm_model()
+        provider_label = self._provider_options().get(provider_id, provider_id)
+
         show_import_dialog(
             story_form_options=options,
             has_unsaved_changes=has_unsaved,
+            llm_provider_label=provider_label,
+            llm_model=model,
             on_import=self._import_story_text,
         )
 
-    def _import_story_text(self, story_form_id: str, source_filename: str, raw_story_text: str) -> None:
+    async def _import_story_text(
+        self,
+        story_form_id: str,
+        source_filename: str,
+        raw_story_text: str,
+        use_llm_first_pass: bool,
+    ) -> None:
+        self.state.status_bus.info("Import started. Parsing story input...")
+        render_status_panel.refresh(self.state)
+
         try:
-            project = self._import_service.import_story_text(
+            project = await run.io_bound(
+                self._import_service.import_story_text,
                 raw_story_text=raw_story_text,
                 source_filename=source_filename,
                 story_form_id=story_form_id,
+                use_llm_first_pass=use_llm_first_pass,
+                llm_provider_id=self._current_llm_provider_id(),
+                llm_model=self._current_llm_model(),
             )
         except Exception as exc:
             self.state.status_bus.error(f"Could not import story: {exc}")
@@ -175,6 +212,17 @@ class LayoutController:
             if component.required and component.is_placeholder
         )
         self.state.status_bus.info(f"Imported {source_filename} using {project.story_form_label}.")
+        if project.import_info.llm_first_pass_used:
+            self.state.status_bus.info(
+                f"LLM first-pass draft generated ({project.import_info.llm_first_pass_provider}/"
+                f"{project.import_info.llm_first_pass_model})."
+            )
+            if project.import_info.llm_first_pass_draft_path:
+                self.state.status_bus.info(
+                    f"LLM first-pass draft saved: {project.import_info.llm_first_pass_draft_path}"
+                )
+            if project.import_info.llm_first_pass_warning:
+                self.state.status_bus.warning(project.import_info.llm_first_pass_warning)
         if placeholders:
             self.state.status_bus.warning(
                 f"Inserted {placeholders} required placeholders for missing story components."
@@ -214,6 +262,114 @@ class LayoutController:
             with ui.row().classes("w-full justify-end gap-2"):
                 ui.button("Cancel", on_click=dialog.close).props("outline")
                 ui.button("Save", on_click=handle_save_click)
+
+        dialog.open()
+
+    def on_import_tagged_draft(self) -> None:
+        has_unsaved = bool(self.state.current_project and self.state.current_project.dirty)
+        story_form_options = {story_form["id"]: story_form["label"] for story_form in self._registry.list_forms()}
+        default_form = (
+            self.state.current_project.story_form_id
+            if self.state.current_project and self.state.current_project.story_form_id in story_form_options
+            else next(iter(story_form_options.keys()))
+        )
+        uploaded_name = ""
+        uploaded_text = ""
+        uploaded_size = 0
+
+        with ui.dialog() as dialog, ui.card().classes("w-[40rem] max-w-full"):
+            ui.label("Import Tagged Draft").classes("text-lg font-medium")
+            ui.label(
+                "Expected tags: '## Quarter', '- Component: ...', and optional '- Story Text: ...'."
+            ).classes("text-sm text-gray-700")
+
+            if has_unsaved:
+                ui.label("Warning: importing will replace the current unsaved project.").classes("text-sm text-amber-700")
+
+            selected_form = ui.select(
+                options=story_form_options,
+                value=default_form,
+                label="Story Form",
+            ).classes("w-full")
+
+            upload_status = ui.label("No .txt file selected.").classes("text-sm text-gray-700")
+
+            async def handle_upload(event: events.UploadEventArguments) -> None:
+                nonlocal uploaded_name, uploaded_text, uploaded_size
+                uploaded_name, raw_bytes = await _extract_upload_payload(event)
+
+                if not uploaded_name.lower().endswith(".txt"):
+                    uploaded_name = ""
+                    uploaded_text = ""
+                    uploaded_size = 0
+                    upload_status.set_text("Please upload a .txt file.")
+                    return
+
+                uploaded_size = len(raw_bytes)
+                if uploaded_size == 0:
+                    uploaded_text = ""
+                    upload_status.set_text(f"Loaded: {uploaded_name} (0 bytes)")
+                    return
+
+                try:
+                    uploaded_text = raw_bytes.decode("utf-8")
+                except UnicodeDecodeError:
+                    try:
+                        uploaded_text = raw_bytes.decode("latin-1")
+                    except UnicodeDecodeError:
+                        uploaded_text = raw_bytes.decode("utf-8", errors="replace")
+                upload_status.set_text(f"Loaded: {uploaded_name} ({uploaded_size} bytes)")
+
+            ui.upload(
+                on_upload=handle_upload,
+                auto_upload=True,
+                label="Browse Tagged Draft (.txt)",
+            ).props("accept=.txt")
+
+            replace_confirm = ui.checkbox("I understand current unsaved work will be replaced.", value=False)
+            if not has_unsaved:
+                replace_confirm.visible = False
+
+            async def handle_import_click() -> None:
+                story_form_id = selected_form.value
+                if not story_form_id:
+                    ui.notify("Select a story form.", type="warning")
+                    return
+                if not uploaded_name or uploaded_size == 0 or not uploaded_text.strip():
+                    ui.notify("Upload a non-empty .txt file.", type="warning")
+                    return
+                if has_unsaved and not replace_confirm.value:
+                    ui.notify("Confirm replacement of unsaved work.", type="warning")
+                    return
+
+                self.state.status_bus.info("Tagged draft import started...")
+                render_status_panel.refresh(self.state)
+
+                try:
+                    project = await run.io_bound(
+                        self._import_service.import_story_text,
+                        raw_story_text=uploaded_text,
+                        source_filename=uploaded_name,
+                        story_form_id=story_form_id,
+                        use_llm_first_pass=False,
+                        llm_provider_id=self._current_llm_provider_id(),
+                        llm_model=self._current_llm_model(),
+                    )
+                except Exception as exc:
+                    self.state.status_bus.error(f"Could not import tagged draft: {exc}")
+                    render_status_panel.refresh(self.state)
+                    return
+
+                self.state.current_project = project
+                self.state.selected_node_id = project.selected_node_id
+                self._ensure_llm_defaults()
+                self.state.status_bus.info(f"Imported tagged draft {uploaded_name}.")
+                dialog.close()
+                self.refresh_all()
+
+            with ui.row().classes("w-full justify-end gap-2"):
+                ui.button("Cancel", on_click=dialog.close).props("outline")
+                ui.button("Import Tagged Draft", on_click=handle_import_click)
 
         dialog.open()
 
@@ -320,6 +476,7 @@ class LayoutController:
             self.on_llm_model_change,
             self.on_test_llm_connection,
             self.on_import,
+            self.on_import_tagged_draft,
             self.on_save,
             self.on_load,
             self.on_export,
@@ -369,6 +526,7 @@ class LayoutController:
             self.on_llm_model_change,
             self.on_test_llm_connection,
             self.on_import,
+            self.on_import_tagged_draft,
             self.on_save,
             self.on_load,
             self.on_export,
@@ -394,6 +552,7 @@ class LayoutController:
             self.on_llm_model_change,
             self.on_test_llm_connection,
             self.on_import,
+            self.on_import_tagged_draft,
             self.on_save,
             self.on_load,
             self.on_export,
@@ -432,6 +591,20 @@ class LayoutController:
         if not project.llm_model:
             project.llm_model = self._llm_connection.default_model_for_provider(project.llm_provider)
 
+
+    def _current_llm_provider_id(self) -> str:
+        project = self.state.current_project
+        if project and project.llm_provider:
+            return project.llm_provider
+        return self._llm_connection.default_provider_id()
+
+    def _current_llm_model(self) -> str:
+        project = self.state.current_project
+        provider_id = self._current_llm_provider_id()
+        if project and project.llm_model:
+            return project.llm_model
+        return self._llm_connection.default_model_for_provider(provider_id)
+
     def _provider_options(self) -> dict[str, str]:
         return self._llm_connection.list_provider_options()
 
@@ -466,6 +639,7 @@ def build_layout(state: AppState) -> None:
             controller.on_llm_model_change,
             controller.on_test_llm_connection,
             controller.on_import,
+            controller.on_import_tagged_draft,
             controller.on_save,
             controller.on_load,
             controller.on_export,

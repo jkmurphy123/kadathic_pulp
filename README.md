@@ -12,7 +12,7 @@ Python + NiceGUI application for turning rough story ideas into structured pulp 
 - Milestone 6: Editable detail panel, dirty-state tracking, and Save/Load Project actions from the UI
 - Milestone 7: Export Story dialog integrated with text exporter and status feedback
 - Milestone 8: Placeholder/completion badges, project title editing, cleaner UI styling, and parser interface extension points
-- Milestone 9: `agent_foundry` LLM integration with provider/model dropdowns and Test LLM Connection button
+- Milestone 9: `agent_foundry` LLM integration with provider/model dropdowns, Test LLM Connection, and optional LLM first-pass import guidance
 
 ## Local Setup
 
@@ -42,3 +42,13 @@ python -m pulp_builder.app
 - `OpenAI-Compatible` uses:
   - `OPENAI_COMPAT_BASE_URL` (default `https://api.openai.com`)
   - `OPENAI_COMPAT_API_KEY_ENV` (default `OPENAI_API_KEY`)
+
+## LLM First-Pass Import
+
+- In `Import Story`, enable `Use LLM first pass` to generate a recommended Lester Dent breakdown draft only.
+- The draft is saved to `Drafts/<project_name>_llm_first_pass.txt` and includes both original raw text and the LLM breakdown.
+- You can edit that file, then use `Import Tagged Draft` to map it into the structure.
+- Tagged parser supports:
+  - `## Quarter Name`
+  - `- Component Title: summary text`
+  - `- Story Text: full section text` (applies to the most recent component line)

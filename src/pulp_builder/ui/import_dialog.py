@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
+import inspect
 
 from nicegui import events, ui
 
@@ -27,7 +28,9 @@ async def _extract_upload_payload(event: events.UploadEventArguments) -> tuple[s
 def show_import_dialog(
     story_form_options: dict[str, str],
     has_unsaved_changes: bool,
-    on_import: Callable[[str, str, str], None],
+    llm_provider_label: str,
+    llm_model: str,
+    on_import: Callable[[str, str, str, bool], Awaitable[None] | None],
 ) -> None:
     """Open the import dialog and invoke callback on successful validation."""
 
@@ -50,6 +53,11 @@ def show_import_dialog(
             value=next(iter(story_form_options.keys())),
             label="Story Form",
         ).classes("w-full")
+
+        use_llm_first_pass = ui.checkbox(
+            f"Use LLM first pass ({llm_provider_label} / {llm_model})",
+            value=False,
+        )
 
         upload_status = ui.label("No .txt file selected.").classes("text-sm text-gray-700")
 
@@ -90,7 +98,7 @@ def show_import_dialog(
         if not has_unsaved_changes:
             replace_confirm.visible = False
 
-        def handle_import_click() -> None:
+        async def handle_import_click() -> None:
             story_form_id = selected_form.value
             if not story_form_id:
                 ui.notify("Select a story form.", type="warning")
@@ -104,7 +112,9 @@ def show_import_dialog(
                 ui.notify("Confirm replacement of unsaved work.", type="warning")
                 return
 
-            on_import(story_form_id, uploaded_name, uploaded_text)
+            result = on_import(story_form_id, uploaded_name, uploaded_text, bool(use_llm_first_pass.value))
+            if inspect.isawaitable(result):
+                await result
             dialog.close()
 
         with ui.row().classes("w-full justify-end gap-2"):

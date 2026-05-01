@@ -15,6 +15,12 @@ class ImportInfo(BaseModel):
     source_filename: str
     imported_at: datetime
     parser_version: str
+    llm_first_pass_used: bool = False
+    llm_first_pass_provider: str | None = None
+    llm_first_pass_model: str | None = None
+    llm_first_pass_text: str = ""
+    llm_first_pass_draft_path: str = ""
+    llm_first_pass_warning: str = ""
 
 
 class StoryProject(BaseModel):

@@ -117,6 +117,31 @@ class LLMConnectionService:
             response_preview=preview,
         )
 
+
+    def generate_text(
+        self,
+        provider_id: str,
+        model: str,
+        user_prompt: str,
+        system_prompt: str | None = None,
+    ) -> str:
+        """Run one provider chat generation and return text."""
+
+        provider = self._build_provider(provider_id=provider_id, model=model)
+        from agent_foundry.providers.base import ProviderChatRequest, ProviderMessage
+
+        messages: list[ProviderMessage] = []
+        if system_prompt:
+            messages.append(ProviderMessage(role="system", content=system_prompt))
+        messages.append(ProviderMessage(role="user", content=user_prompt))
+
+        response = provider.chat(
+            ProviderChatRequest(
+                model=model,
+                messages=messages,
+            )
+        )
+        return response.text
     def _build_provider(self, provider_id: str, model: str):
         """Instantiate one configured agent_foundry provider adapter."""
 

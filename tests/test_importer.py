@@ -43,3 +43,23 @@ def test_import_service_fixes_story_form_on_project() -> None:
 
     assert project.story_form_id == "lovecraft_weird"
     assert project.story_form_label == "Lovecraft Weird Tale"
+
+
+def test_import_service_llm_first_pass_with_mock_provider(tmp_path) -> None:
+    service = ImportService(drafts_dir=tmp_path / "Drafts")
+    project = service.import_story_text(
+        raw_story_text="Rane finds a cursed chart and sails toward a drowned city.",
+        source_filename="llm.txt",
+        story_form_id="hybrid_weird_adventure",
+        project_title="Rane Voyage",
+        use_llm_first_pass=True,
+        llm_provider_id="mock",
+        llm_model="mock-model",
+    )
+
+    assert project.import_info.llm_first_pass_used is True
+    assert project.import_info.parser_version == "deterministic-v1"
+    assert project.import_info.llm_first_pass_provider == "mock"
+    assert project.import_info.llm_first_pass_model == "mock-model"
+    assert project.import_info.llm_first_pass_text.strip()
+    assert project.import_info.llm_first_pass_draft_path.endswith("rane_voyage_llm_first_pass.txt")

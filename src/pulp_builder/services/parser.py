@@ -113,6 +113,10 @@ class DeterministicParser:
         """Parse raw text and map paragraphs to story components."""
 
         root_nodes = self._build_nodes(story_form)
+        if self._apply_tagged_outline(raw_story_text=raw_story_text, root_nodes=root_nodes):
+            self._insert_placeholders(root_nodes)
+            return ParseResult(raw_story_text=raw_story_text, root_nodes=root_nodes)
+
         paragraphs = self._split_paragraphs(raw_story_text)
         assignments = self._assign_paragraphs(paragraphs, root_nodes)
         self._apply_assignments(assignments)
@@ -231,6 +235,91 @@ class DeterministicParser:
             node.was_placeholder = False
             node.missing_reason = ""
             node.completion_state = "drafted"
+
+    def _apply_tagged_outline(self, raw_story_text: str, root_nodes: list[StoryNode]) -> bool:
+        """Apply direct component mapping from tagged text outline.
+
+        Expected input pattern:
+        ## Opening Menace
+        - Hook with Menace: ...
+        - Hero Desire: ...
+        """
+
+        quarter_title_to_node = {quarter.title.strip().lower(): quarter for quarter in root_nodes}
+        component_title_to_node = {
+            component.title.strip().lower(): component
+            for quarter in root_nodes
+            for component in quarter.children
+        }
+
+        active_quarter: StoryNode | None = None
+        active_component: StoryNode | None = None
+        matched_components = 0
+
+        for line in raw_story_text.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            heading_match = re.match(r"^##\s+(.+)$", stripped)
+            if heading_match:
+                quarter_title = heading_match.group(1).strip().lower()
+                active_quarter = quarter_title_to_node.get(quarter_title)
+                active_component = None
+                continue
+
+            item_match = re.match(r"^-\s+([^:]+):\s*(.+)$", stripped)
+            if not item_match:
+                continue
+
+            field_title = item_match.group(1).strip().lower()
+            component_text = item_match.group(2).strip()
+            if not component_text:
+                continue
+
+            if field_title == "story text":
+                if active_component is None:
+                    continue
+                active_component.story_text = component_text
+                active_component.extracted_evidence = [
+                    ExtractedEvidence(
+                        source="manual",
+                        text=component_text,
+                        confidence=0.98,
+                        notes="Assigned from explicit Story Text tag.",
+                    )
+                ]
+                active_component.is_placeholder = False
+                active_component.was_placeholder = False
+                active_component.missing_reason = ""
+                active_component.completion_state = "drafted"
+                continue
+
+            candidate = component_title_to_node.get(field_title)
+            if candidate is None:
+                continue
+
+            # If a quarter heading is active, keep assignment within that quarter.
+            if active_quarter and candidate.parent_id != active_quarter.node_id:
+                continue
+
+            active_component = candidate
+            candidate.story_text = component_text
+            candidate.extracted_evidence = [
+                ExtractedEvidence(
+                    source="manual",
+                    text=component_text,
+                    confidence=0.95,
+                    notes="Assigned from tagged outline input.",
+                )
+            ]
+            candidate.is_placeholder = False
+            candidate.was_placeholder = False
+            candidate.missing_reason = ""
+            candidate.completion_state = "drafted"
+            matched_components += 1
+
+        return matched_components > 0
 
     def _insert_placeholders(self, root_nodes: list[StoryNode]) -> None:
         for node in self._component_nodes(root_nodes):
