@@ -35,6 +35,14 @@ pytest
 python -m pulp_builder.app
 ```
 
+## App Config Persistence
+
+- App-level LLM defaults are saved in `config/app_config.json`.
+- The file is updated when:
+  - a story import succeeds
+  - a project save succeeds
+- On the next app launch/session, those provider/model defaults are loaded automatically.
+
 ## LLM Provider Notes
 
 - `Mock` works offline and is useful for validating UI wiring.
@@ -45,6 +53,7 @@ python -m pulp_builder.app
 
 ## LLM First-Pass Import
 
+- Project name is set in the `Import Story` dialog and shown read-only in the top panel.
 - In `Import Story`, enable `Use LLM first pass` to generate a recommended Lester Dent breakdown draft only.
 - The draft is saved to `Drafts/<project_name>_llm_first_pass.txt` and includes both original raw text and the LLM breakdown.
 - You can edit that file, then use `Import Tagged Draft` to map it into the structure.

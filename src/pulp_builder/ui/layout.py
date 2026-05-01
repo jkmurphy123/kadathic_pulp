@@ -11,6 +11,7 @@ from nicegui import events, run, ui
 
 from pulp_builder.models.story_project import StoryProject
 from pulp_builder.models.story_structure import StoryNode
+from pulp_builder.services.app_config_store import AppConfig, AppConfigStore
 from pulp_builder.services.exporter import StoryExporter
 from pulp_builder.services.importer import ImportService
 from pulp_builder.services.llm_connection import LLMConnectionService
@@ -68,6 +69,8 @@ class LayoutController:
 
     def __init__(self, state: AppState) -> None:
         self.state = state
+        self._app_config_store = AppConfigStore()
+        self._app_config = self._app_config_store.load()
         self._exporter = StoryExporter()
         self._import_service = ImportService()
         self._llm_connection = LLMConnectionService()
@@ -117,7 +120,6 @@ class LayoutController:
             self.state,
             self._provider_options(),
             self._model_options(),
-            self.on_title_change,
             self.on_llm_provider_change,
             self.on_llm_model_change,
             self.on_test_llm_connection,
@@ -129,35 +131,6 @@ class LayoutController:
         )
         render_structure_panel.refresh(self.state, self.on_select_node)
         render_detail_panel.refresh(self.state, self.on_story_text_change)
-        render_status_panel.refresh(self.state)
-
-    def on_title_change(self, title: str) -> None:
-        project = self.state.current_project
-        if not project:
-            return
-
-        normalized_title = (title or "").strip() or "Untitled Project"
-        if normalized_title == project.title:
-            return
-
-        project.title = normalized_title
-        project.dirty = True
-        project.updated_at = datetime.now(timezone.utc)
-        self.state.status_bus.info(f"Project title updated to '{normalized_title}'.")
-        render_top_panel.refresh(
-            self.state,
-            self._provider_options(),
-            self._model_options(),
-            self.on_title_change,
-            self.on_llm_provider_change,
-            self.on_llm_model_change,
-            self.on_test_llm_connection,
-            self.on_import,
-            self.on_import_tagged_draft,
-            self.on_save,
-            self.on_load,
-            self.on_export,
-        )
         render_status_panel.refresh(self.state)
 
     def on_import(self) -> None:
@@ -181,6 +154,7 @@ class LayoutController:
         story_form_id: str,
         source_filename: str,
         raw_story_text: str,
+        project_title: str,
         use_llm_first_pass: bool,
     ) -> None:
         self.state.status_bus.info("Import started. Parsing story input...")
@@ -192,6 +166,7 @@ class LayoutController:
                 raw_story_text=raw_story_text,
                 source_filename=source_filename,
                 story_form_id=story_form_id,
+                project_title=project_title,
                 use_llm_first_pass=use_llm_first_pass,
                 llm_provider_id=self._current_llm_provider_id(),
                 llm_model=self._current_llm_model(),
@@ -204,6 +179,7 @@ class LayoutController:
         self.state.current_project = project
         self.state.selected_node_id = project.selected_node_id
         self._ensure_llm_defaults()
+        self._save_app_llm_preferences(project)
 
         placeholders = sum(
             1
@@ -256,6 +232,7 @@ class LayoutController:
                     return
 
                 self.state.status_bus.info(f"Saved project to {saved_path}.")
+                self._save_app_llm_preferences(project)
                 dialog.close()
                 self.refresh_all()
 
@@ -351,6 +328,9 @@ class LayoutController:
                         raw_story_text=uploaded_text,
                         source_filename=uploaded_name,
                         story_form_id=story_form_id,
+                        project_title=(
+                            self.state.current_project.title if self.state.current_project else None
+                        ),
                         use_llm_first_pass=False,
                         llm_provider_id=self._current_llm_provider_id(),
                         llm_model=self._current_llm_model(),
@@ -471,7 +451,6 @@ class LayoutController:
             self.state,
             self._provider_options(),
             self._model_options(),
-            self.on_title_change,
             self.on_llm_provider_change,
             self.on_llm_model_change,
             self.on_test_llm_connection,
@@ -521,7 +500,6 @@ class LayoutController:
             self.state,
             self._provider_options(),
             self._model_options(),
-            self.on_title_change,
             self.on_llm_provider_change,
             self.on_llm_model_change,
             self.on_test_llm_connection,
@@ -547,7 +525,6 @@ class LayoutController:
             self.state,
             self._provider_options(),
             self._model_options(),
-            self.on_title_change,
             self.on_llm_provider_change,
             self.on_llm_model_change,
             self.on_test_llm_connection,
@@ -587,22 +564,27 @@ class LayoutController:
             return
 
         if not project.llm_provider:
-            project.llm_provider = self._llm_connection.default_provider_id()
+            project.llm_provider = self._app_config.llm_provider or self._llm_connection.default_provider_id()
         if not project.llm_model:
-            project.llm_model = self._llm_connection.default_model_for_provider(project.llm_provider)
+            if self._app_config.llm_model and project.llm_provider == (self._app_config.llm_provider or ""):
+                project.llm_model = self._app_config.llm_model
+            else:
+                project.llm_model = self._llm_connection.default_model_for_provider(project.llm_provider)
 
 
     def _current_llm_provider_id(self) -> str:
         project = self.state.current_project
         if project and project.llm_provider:
             return project.llm_provider
-        return self._llm_connection.default_provider_id()
+        return self._app_config.llm_provider or self._llm_connection.default_provider_id()
 
     def _current_llm_model(self) -> str:
         project = self.state.current_project
         provider_id = self._current_llm_provider_id()
         if project and project.llm_model:
             return project.llm_model
+        if self._app_config.llm_model and provider_id == (self._app_config.llm_provider or ""):
+            return self._app_config.llm_model
         return self._llm_connection.default_model_for_provider(provider_id)
 
     def _provider_options(self) -> dict[str, str]:
@@ -612,6 +594,12 @@ class LayoutController:
         project = self.state.current_project
         provider_id = project.llm_provider if project and project.llm_provider else self._llm_connection.default_provider_id()
         return self._llm_connection.model_options_for_provider(provider_id)
+
+    def _save_app_llm_preferences(self, project: StoryProject) -> None:
+        if not project.llm_provider or not project.llm_model:
+            return
+        self._app_config = AppConfig(llm_provider=project.llm_provider, llm_model=project.llm_model)
+        self._app_config_store.save(self._app_config)
 
 
 def build_layout(state: AppState) -> None:
@@ -634,7 +622,6 @@ def build_layout(state: AppState) -> None:
             state,
             controller._provider_options(),
             controller._model_options(),
-            controller.on_title_change,
             controller.on_llm_provider_change,
             controller.on_llm_model_change,
             controller.on_test_llm_connection,

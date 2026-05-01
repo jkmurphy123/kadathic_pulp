@@ -30,7 +30,7 @@ def show_import_dialog(
     has_unsaved_changes: bool,
     llm_provider_label: str,
     llm_model: str,
-    on_import: Callable[[str, str, str, bool], Awaitable[None] | None],
+    on_import: Callable[[str, str, str, str, bool], Awaitable[None] | None],
 ) -> None:
     """Open the import dialog and invoke callback on successful validation."""
 
@@ -53,6 +53,7 @@ def show_import_dialog(
             value=next(iter(story_form_options.keys())),
             label="Story Form",
         ).classes("w-full")
+        project_name_input = ui.input("Project Name", value="Untitled Project").classes("w-full")
 
         use_llm_first_pass = ui.checkbox(
             f"Use LLM first pass ({llm_provider_label} / {llm_model})",
@@ -103,6 +104,10 @@ def show_import_dialog(
             if not story_form_id:
                 ui.notify("Select a story form.", type="warning")
                 return
+            project_title = (project_name_input.value or "").strip()
+            if not project_title:
+                ui.notify("Provide a project name.", type="warning")
+                return
 
             if not uploaded_name or uploaded_size == 0 or not uploaded_text.strip():
                 ui.notify("Upload a non-empty .txt file.", type="warning")
@@ -112,7 +117,13 @@ def show_import_dialog(
                 ui.notify("Confirm replacement of unsaved work.", type="warning")
                 return
 
-            result = on_import(story_form_id, uploaded_name, uploaded_text, bool(use_llm_first_pass.value))
+            result = on_import(
+                story_form_id,
+                uploaded_name,
+                uploaded_text,
+                project_title,
+                bool(use_llm_first_pass.value),
+            )
             if inspect.isawaitable(result):
                 await result
             dialog.close()

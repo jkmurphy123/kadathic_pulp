@@ -13,7 +13,6 @@ def render_top_panel(
     state,
     provider_options: dict[str, str],
     model_options: list[str],
-    on_title_change: Callable[[str], None],
     on_provider_change: Callable[[str], None],
     on_model_change: Callable[[str], None],
     on_test_llm_connection: Callable[[], None],
@@ -36,14 +35,10 @@ def render_top_panel(
     with ui.card().classes("w-full py-2 bg-slate-50"):
         with ui.row().classes("w-full items-center justify-between gap-4 no-wrap"):
             with ui.row().classes("items-center gap-4 no-wrap"):
-                def _handle_title_change(event: events.ValueChangeEventArguments) -> None:
-                    on_title_change(event.value or "")
-
                 ui.input(
                     "Project",
-                    value=project_name if project else "",
-                    on_change=_handle_title_change,
-                ).props("dense outlined").classes("min-w-[16rem]")
+                    value=project_name,
+                ).props("dense outlined readonly").classes("min-w-[16rem]")
                 ui.label(f"Story Form: {story_form}").classes("text-sm")
                 ui.label(f"Imported File: {source_file}").classes("text-sm")
                 state_classes = "text-amber-700" if dirty_label == "Unsaved Changes" else "text-green-700"
@@ -66,7 +61,7 @@ def render_top_panel(
                     value=current_model if current_model in model_select_options else None,
                     label="LLM Model",
                     on_change=_handle_model_change,
-                ).props("dense outlined use-input fill-input").classes("min-w-[12rem]")
+                ).props("dense outlined").classes("min-w-[12rem]")
                 ui.button("Test LLM Connection", on_click=on_test_llm_connection).props("outline size=sm")
 
             with ui.row().classes("items-center gap-2"):
