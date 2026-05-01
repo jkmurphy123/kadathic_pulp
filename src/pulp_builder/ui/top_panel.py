@@ -1,0 +1,1 @@
+"""Top panel module placeholder."""

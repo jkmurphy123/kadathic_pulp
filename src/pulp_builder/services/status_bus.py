@@ -1,0 +1,1 @@
+"""Status bus service placeholder."""

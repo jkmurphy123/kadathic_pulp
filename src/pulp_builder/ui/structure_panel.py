@@ -1,0 +1,1 @@
+"""Structure panel module placeholder."""

@@ -1,0 +1,1 @@
+"""Status panel module placeholder."""

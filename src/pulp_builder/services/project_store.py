@@ -1,0 +1,1 @@
+"""Project store service placeholder."""
