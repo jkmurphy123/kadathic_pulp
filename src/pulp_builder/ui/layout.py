@@ -8,8 +8,11 @@ from nicegui import ui
 
 from pulp_builder.models.story_project import StoryProject
 from pulp_builder.models.story_structure import StoryNode
+from pulp_builder.services.importer import ImportService
 from pulp_builder.services.status_bus import StatusBus
+from pulp_builder.structures.registry import StoryStructureRegistry
 from pulp_builder.ui.detail_panel import render_detail_panel
+from pulp_builder.ui.import_dialog import show_import_dialog
 from pulp_builder.ui.status_panel import render_status_panel
 from pulp_builder.ui.structure_panel import render_structure_panel
 from pulp_builder.ui.top_panel import render_top_panel
@@ -43,6 +46,8 @@ class LayoutController:
 
     def __init__(self, state: AppState) -> None:
         self.state = state
+        self._import_service = ImportService()
+        self._registry = StoryStructureRegistry()
 
     def on_select_node(self, node_id: str) -> None:
         self.state.selected_node_id = node_id
@@ -52,8 +57,45 @@ class LayoutController:
         self.refresh_all()
 
     def on_import(self) -> None:
-        self.state.status_bus.info("Import dialog will be connected in Milestone 5.")
-        render_status_panel.refresh(self.state)
+        options = {story_form["id"]: story_form["label"] for story_form in self._registry.list_forms()}
+        has_unsaved = bool(self.state.current_project and self.state.current_project.dirty)
+
+        show_import_dialog(
+            story_form_options=options,
+            has_unsaved_changes=has_unsaved,
+            on_import=self._import_story_text,
+        )
+
+    def _import_story_text(self, story_form_id: str, source_filename: str, raw_story_text: str) -> None:
+        try:
+            project = self._import_service.import_story_text(
+                raw_story_text=raw_story_text,
+                source_filename=source_filename,
+                story_form_id=story_form_id,
+            )
+        except Exception as exc:
+            self.state.status_bus.error(f"Could not import story: {exc}")
+            render_status_panel.refresh(self.state)
+            return
+
+        self.state.current_project = project
+        self.state.selected_node_id = project.selected_node_id
+
+        placeholders = sum(
+            1
+            for quarter in project.root_nodes
+            for component in quarter.children
+            if component.required and component.is_placeholder
+        )
+        self.state.status_bus.info(
+            f"Imported {source_filename} using {project.story_form_label}."
+        )
+        if placeholders:
+            self.state.status_bus.warning(
+                f"Inserted {placeholders} required placeholders for missing story components."
+            )
+
+        self.refresh_all()
 
     def on_save(self) -> None:
         self.state.status_bus.info("Save from UI is planned for Milestone 6.")

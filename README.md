@@ -8,6 +8,7 @@ Python + NiceGUI application for turning rough story ideas into structured pulp 
 - Milestone 2: deterministic parser and import service with placeholders
 - Milestone 3: JSON save/load and text exporter
 - Milestone 4: NiceGUI four-panel shell with sample project and node-detail interaction
+- Milestone 5: Import Story dialog with story-form selection, `.txt` upload, parser integration, and status feedback
 
 ## Local Setup
 
@@ -23,7 +24,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-## Launch App Shell
+## Launch App
 
 ```bash
 python -m pulp_builder.app
