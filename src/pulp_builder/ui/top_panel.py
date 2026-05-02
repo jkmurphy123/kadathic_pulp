@@ -17,6 +17,7 @@ def render_top_panel(
     on_model_change: Callable[[str], None],
     on_test_llm_connection: Callable[[], None],
     on_import,
+    on_new_project,
     on_import_tagged_draft,
     on_save,
     on_load,
@@ -66,6 +67,7 @@ def render_top_panel(
 
             with ui.row().classes("items-center gap-2"):
                 ui.button("Import Story", on_click=on_import).props("outline size=sm")
+                ui.button("New Project", on_click=on_new_project).props("outline size=sm")
                 ui.button("Import Tagged Draft", on_click=on_import_tagged_draft).props("outline size=sm")
                 ui.button("Save Project", on_click=on_save).props("outline size=sm")
                 ui.button("Load Project", on_click=on_load).props("outline size=sm")

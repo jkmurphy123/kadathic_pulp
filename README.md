@@ -35,6 +35,13 @@ pytest
 python -m pulp_builder.app
 ```
 
+## New Project From Template
+
+- Use `New Project` in the top panel to create a project without importing user text.
+- Choose project name and story form.
+- The app loads a built-in tagged template from `templates/<story_form>.txt` and builds the structure.
+- This is useful for starting from a clean style scaffold before adding your own story text.
+
 ## App Config Persistence
 
 - App-level LLM defaults are saved in `config/app_config.json`.

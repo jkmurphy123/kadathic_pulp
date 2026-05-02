@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 import re
 from typing import Any
 
@@ -80,6 +81,7 @@ class LayoutController:
         self._llm_tag_applier = LLMTagApplierService(self._llm_connection)
         self._project_store = ProjectStore()
         self._registry = StoryStructureRegistry()
+        self._templates_dir = Path(__file__).resolve().parents[3] / "templates"
         self._load_dialog = None
         self._load_warning_label = None
         self._load_status_label = None
@@ -144,6 +146,7 @@ class LayoutController:
                 self.on_llm_model_change,
                 self.on_test_llm_connection,
                 self.on_import,
+                self.on_new_project,
                 self.on_import_tagged_draft,
                 self.on_save,
                 self.on_load,
@@ -161,6 +164,7 @@ class LayoutController:
             self.on_llm_model_change,
             self.on_test_llm_connection,
             self.on_import,
+            self.on_new_project,
             self.on_import_tagged_draft,
             self.on_save,
             self.on_load,
@@ -292,6 +296,91 @@ class LayoutController:
             llm_model=model,
             on_import=self._import_story_text,
         )
+
+    def on_new_project(self) -> None:
+        has_unsaved = bool(self.state.current_project and self.state.current_project.dirty)
+        story_form_options = {story_form["id"]: story_form["label"] for story_form in self._registry.list_forms()}
+        default_form = (
+            self.state.current_project.story_form_id
+            if self.state.current_project and self.state.current_project.story_form_id in story_form_options
+            else next(iter(story_form_options.keys()))
+        )
+
+        with ui.dialog() as dialog, ui.card().classes("w-[36rem] max-w-full"):
+            ui.label("New Project").classes("text-lg font-medium")
+            ui.label(
+                "Create a project from a built-in tagged template for the selected story style."
+            ).classes("text-sm text-gray-700")
+
+            if has_unsaved:
+                ui.label("Warning: creating a new project will replace unsaved work.").classes(
+                    "text-sm text-amber-700"
+                )
+
+            project_name_input = ui.input("Project Name", value="Untitled Project").classes("w-full")
+            selected_form = ui.select(
+                options=story_form_options,
+                value=default_form,
+                label="Story Form",
+            ).classes("w-full")
+
+            replace_confirm = ui.checkbox("I understand current unsaved work will be replaced.", value=False)
+            if not has_unsaved:
+                replace_confirm.visible = False
+
+            async def handle_create_click() -> None:
+                project_title = (project_name_input.value or "").strip()
+                story_form_id = selected_form.value
+                if not project_title:
+                    ui.notify("Provide a project name.", type="warning")
+                    return
+                if not story_form_id:
+                    ui.notify("Select a story form.", type="warning")
+                    return
+                if has_unsaved and not replace_confirm.value:
+                    ui.notify("Confirm replacement of unsaved work.", type="warning")
+                    return
+
+                template_path = self._templates_dir / f"{story_form_id}.txt"
+                if not template_path.exists():
+                    self.state.status_bus.error(f"Template not found: {template_path}")
+                    render_status_panel.refresh(self.state)
+                    return
+
+                self.state.status_bus.info(f"New project creation started from template '{template_path.name}'...")
+                render_status_panel.refresh(self.state)
+                try:
+                    template_text = template_path.read_text(encoding="utf-8")
+                    project = await run.io_bound(
+                        self._import_service.import_story_text,
+                        raw_story_text=template_text,
+                        source_filename=template_path.name,
+                        story_form_id=story_form_id,
+                        project_title=project_title,
+                        use_llm_first_pass=False,
+                        llm_provider_id=self._current_llm_provider_id(),
+                        llm_model=self._current_llm_model(),
+                    )
+                except Exception as exc:
+                    self.state.status_bus.error(f"Could not create new project: {exc}")
+                    render_status_panel.refresh(self.state)
+                    return
+
+                self.state.current_project = project
+                self.state.selected_node_id = project.selected_node_id
+                self._ensure_llm_defaults()
+                self._save_app_llm_preferences(project)
+                self.state.status_bus.info(
+                    f"Created new project '{project.title}' from template {template_path.name}."
+                )
+                dialog.close()
+                self.refresh_all()
+
+            with ui.row().classes("w-full justify-end gap-2"):
+                ui.button("Cancel", on_click=dialog.close).props("outline")
+                ui.button("Create Project", on_click=handle_create_click)
+
+        dialog.open()
 
     async def _import_story_text(
         self,
@@ -554,6 +643,7 @@ class LayoutController:
             self.on_llm_model_change,
             self.on_test_llm_connection,
             self.on_import,
+            self.on_new_project,
             self.on_import_tagged_draft,
             self.on_save,
             self.on_load,
@@ -609,6 +699,7 @@ class LayoutController:
             self.on_llm_model_change,
             self.on_test_llm_connection,
             self.on_import,
+            self.on_new_project,
             self.on_import_tagged_draft,
             self.on_save,
             self.on_load,
@@ -634,6 +725,7 @@ class LayoutController:
             self.on_llm_model_change,
             self.on_test_llm_connection,
             self.on_import,
+            self.on_new_project,
             self.on_import_tagged_draft,
             self.on_save,
             self.on_load,
@@ -788,6 +880,7 @@ def build_layout(state: AppState) -> None:
             controller.on_llm_model_change,
             controller.on_test_llm_connection,
             controller.on_import,
+            controller.on_new_project,
             controller.on_import_tagged_draft,
             controller.on_save,
             controller.on_load,
