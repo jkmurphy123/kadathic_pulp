@@ -16,6 +16,7 @@ from pulp_builder.services.exporter import StoryExporter
 from pulp_builder.services.importer import ImportService
 from pulp_builder.services.llm_connection import LLMConnectionService
 from pulp_builder.services.llm_rewriter import LLMRewriteService, RewriteRequest
+from pulp_builder.services.llm_tag_applier import LLMTagApplierService, TagApplyRequest
 from pulp_builder.services.project_store import ProjectStore
 from pulp_builder.services.status_bus import StatusBus
 from pulp_builder.structures.registry import StoryStructureRegistry
@@ -76,8 +77,16 @@ class LayoutController:
         self._import_service = ImportService()
         self._llm_connection = LLMConnectionService()
         self._llm_rewriter = LLMRewriteService(self._llm_connection)
+        self._llm_tag_applier = LLMTagApplierService(self._llm_connection)
         self._project_store = ProjectStore()
         self._registry = StoryStructureRegistry()
+        self._load_dialog = None
+        self._load_warning_label = None
+        self._load_status_label = None
+        self._load_replace_confirm = None
+        self._load_uploaded_name = ""
+        self._load_uploaded_project: StoryProject | None = None
+        self._load_has_unsaved = False
         self._ensure_llm_defaults()
 
     def on_select_node(self, raw_node_id: Any) -> None:
@@ -91,10 +100,16 @@ class LayoutController:
         if self.state.current_project:
             self.state.current_project.selected_node_id = node_id
         self.state.status_bus.info(f"Selected node: {node_id}")
-        render_detail_panel.refresh(self.state, self.on_story_text_change, self.on_llm_rewrite_selected)
+        render_detail_panel.refresh(
+            self.state,
+            self.on_story_text_input,
+            self.on_story_text_commit,
+            self.on_llm_rewrite_selected,
+            self.on_apply_tags_selected,
+        )
         render_status_panel.refresh(self.state)
 
-    def on_story_text_change(self, story_text: str) -> None:
+    def on_story_text_input(self, story_text: str) -> None:
         project = self.state.current_project
         node = self.state.selected_node()
         if not project or not node:
@@ -115,8 +130,28 @@ class LayoutController:
             else:
                 node.is_placeholder = False
 
+        was_dirty = project.dirty
         project.dirty = True
         project.updated_at = datetime.now(timezone.utc)
+
+        # Keep typing responsive: avoid full panel refresh on each keystroke.
+        if not was_dirty:
+            render_top_panel.refresh(
+                self.state,
+                self._provider_options(),
+                self._model_options(),
+                self.on_llm_provider_change,
+                self.on_llm_model_change,
+                self.on_test_llm_connection,
+                self.on_import,
+                self.on_import_tagged_draft,
+                self.on_save,
+                self.on_load,
+                self.on_export,
+            )
+
+    def on_story_text_commit(self) -> None:
+        """Refresh dependent panels after editing focus leaves the textarea."""
 
         render_top_panel.refresh(
             self.state,
@@ -132,7 +167,6 @@ class LayoutController:
             self.on_export,
         )
         render_structure_panel.refresh(self.state, self.on_select_node)
-        render_detail_panel.refresh(self.state, self.on_story_text_change, self.on_llm_rewrite_selected)
         render_status_panel.refresh(self.state)
 
     async def on_llm_rewrite_selected(self) -> None:
@@ -177,8 +211,70 @@ class LayoutController:
             render_status_panel.refresh(self.state)
             return
 
-        self.on_story_text_change(rewritten)
+        self.on_story_text_input(rewritten)
+        self.on_story_text_commit()
+        render_detail_panel.refresh(
+            self.state,
+            self.on_story_text_input,
+            self.on_story_text_commit,
+            self.on_llm_rewrite_selected,
+            self.on_apply_tags_selected,
+        )
         self.state.status_bus.info(f"LLM rewrite applied to '{node.title}'.")
+        render_status_panel.refresh(self.state)
+
+    async def on_apply_tags_selected(self) -> None:
+        project = self.state.current_project
+        node = self.state.selected_node()
+        if not project or not node:
+            self.state.status_bus.warning("Select a story component before applying tags.")
+            render_status_panel.refresh(self.state)
+            return
+        if not node.story_text.strip():
+            self.state.status_bus.warning("Story text is empty; nothing to apply tags to.")
+            render_status_panel.refresh(self.state)
+            return
+
+        provider_id = self._current_llm_provider_id()
+        model = self._current_llm_model()
+        self.state.status_bus.info(f"Applying inline tags with LLM ({provider_id}/{model})...")
+        render_status_panel.refresh(self.state)
+
+        request = TagApplyRequest(
+            story_form_id=project.story_form_id,
+            story_form_label=project.story_form_label,
+            component_title=node.title,
+            component_description=node.description,
+            guidance_prompt=node.guidance_prompt,
+            source_text=node.story_text,
+        )
+        try:
+            updated_text, replacements = await run.io_bound(
+                self._llm_tag_applier.apply_tags,
+                provider_id=provider_id,
+                model=model,
+                request=request,
+            )
+        except Exception as exc:
+            self.state.status_bus.error(f"Apply Tags failed: {exc}")
+            render_status_panel.refresh(self.state)
+            return
+
+        if replacements == 0:
+            self.state.status_bus.warning("No [tag] instructions found in story text.")
+            render_status_panel.refresh(self.state)
+            return
+
+        self.on_story_text_input(updated_text)
+        self.on_story_text_commit()
+        render_detail_panel.refresh(
+            self.state,
+            self.on_story_text_input,
+            self.on_story_text_commit,
+            self.on_llm_rewrite_selected,
+            self.on_apply_tags_selected,
+        )
+        self.state.status_bus.info(f"Applied {replacements} tag replacement(s).")
         render_status_panel.refresh(self.state)
 
     def on_import(self) -> None:
@@ -403,62 +499,16 @@ class LayoutController:
         dialog.open()
 
     def on_load(self) -> None:
-        has_unsaved = bool(self.state.current_project and self.state.current_project.dirty)
-        uploaded_name = ""
-        uploaded_project: StoryProject | None = None
+        self._ensure_load_dialog()
+        self._load_uploaded_name = ""
+        self._load_uploaded_project = None
+        self._load_has_unsaved = bool(self.state.current_project and self.state.current_project.dirty)
 
-        with ui.dialog() as dialog, ui.card().classes("w-[40rem] max-w-full"):
-            ui.label("Load Project").classes("text-lg font-medium")
-            if has_unsaved:
-                ui.label("Warning: loading will replace current unsaved project.").classes("text-sm text-amber-700")
-
-            status_label = ui.label("No project file selected.").classes("text-sm text-gray-700")
-
-            async def handle_upload(event: events.UploadEventArguments) -> None:
-                nonlocal uploaded_name, uploaded_project
-                try:
-                    if hasattr(event, "file") and event.file is not None:
-                        uploaded_name = event.file.name
-                        payload = (await event.file.read()).decode("utf-8")
-                    elif hasattr(event, "name") and hasattr(event, "content"):
-                        uploaded_name = event.name
-                        if hasattr(event.content, "seek"):
-                            event.content.seek(0)
-                        payload = event.content.read().decode("utf-8")
-                    else:
-                        raise ValueError("unsupported upload event payload")
-                    uploaded_project = self._project_store.load_json(payload)
-                    status_label.set_text(f"Loaded JSON: {uploaded_name}")
-                except Exception as exc:
-                    uploaded_project = None
-                    status_label.set_text(f"Invalid project file: {exc}")
-
-            ui.upload(on_upload=handle_upload, auto_upload=True, label="Browse Project JSON").props("accept=.json")
-
-            replace_confirm = ui.checkbox("I understand current unsaved work will be replaced.", value=False)
-            if not has_unsaved:
-                replace_confirm.visible = False
-
-            def handle_load_click() -> None:
-                if has_unsaved and not replace_confirm.value:
-                    ui.notify("Confirm replacement of unsaved work.", type="warning")
-                    return
-                if uploaded_project is None:
-                    ui.notify("Upload a valid project JSON file.", type="warning")
-                    return
-
-                self.state.current_project = uploaded_project
-                self.state.selected_node_id = uploaded_project.selected_node_id
-                self._ensure_llm_defaults()
-                self.state.status_bus.info(f"Loaded project from {uploaded_name}.")
-                dialog.close()
-                self.refresh_all()
-
-            with ui.row().classes("w-full justify-end gap-2"):
-                ui.button("Cancel", on_click=dialog.close).props("outline")
-                ui.button("Load", on_click=handle_load_click)
-
-        dialog.open()
+        self._load_status_label.set_text("No project file selected.")
+        self._load_warning_label.visible = self._load_has_unsaved
+        self._load_replace_confirm.visible = self._load_has_unsaved
+        self._load_replace_confirm.value = False
+        self._load_dialog.open()
 
     def on_export(self) -> None:
         project = self.state.current_project
@@ -510,7 +560,13 @@ class LayoutController:
             self.on_export,
         )
         render_structure_panel.refresh(self.state, self.on_select_node)
-        render_detail_panel.refresh(self.state, self.on_story_text_change, self.on_llm_rewrite_selected)
+        render_detail_panel.refresh(
+            self.state,
+            self.on_story_text_input,
+            self.on_story_text_commit,
+            self.on_llm_rewrite_selected,
+            self.on_apply_tags_selected,
+        )
         render_status_panel.refresh(self.state)
 
     @staticmethod
@@ -650,6 +706,63 @@ class LayoutController:
         self._app_config = AppConfig(llm_provider=project.llm_provider, llm_model=project.llm_model)
         self._app_config_store.save(self._app_config)
 
+    def _ensure_load_dialog(self) -> None:
+        if self._load_dialog is not None:
+            return
+
+        with ui.dialog() as dialog, ui.card().classes("w-[40rem] max-w-full"):
+            ui.label("Load Project").classes("text-lg font-medium")
+            self._load_warning_label = ui.label("Warning: loading will replace current unsaved project.").classes(
+                "text-sm text-amber-700"
+            )
+            self._load_warning_label.visible = False
+            self._load_status_label = ui.label("No project file selected.").classes("text-sm text-gray-700")
+
+            ui.upload(on_upload=self._handle_load_upload, auto_upload=True, label="Browse Project JSON").props(
+                "accept=.json"
+            )
+            self._load_replace_confirm = ui.checkbox("I understand current unsaved work will be replaced.", value=False)
+            self._load_replace_confirm.visible = False
+
+            with ui.row().classes("w-full justify-end gap-2"):
+                ui.button("Cancel", on_click=dialog.close).props("outline")
+                ui.button("Load", on_click=self._handle_load_confirm)
+
+        self._load_dialog = dialog
+
+    async def _handle_load_upload(self, event: events.UploadEventArguments) -> None:
+        try:
+            if hasattr(event, "file") and event.file is not None:
+                self._load_uploaded_name = event.file.name
+                payload = (await event.file.read()).decode("utf-8")
+            elif hasattr(event, "name") and hasattr(event, "content"):
+                self._load_uploaded_name = event.name
+                if hasattr(event.content, "seek"):
+                    event.content.seek(0)
+                payload = event.content.read().decode("utf-8")
+            else:
+                raise ValueError("unsupported upload event payload")
+            self._load_uploaded_project = self._project_store.load_json(payload)
+            self._load_status_label.set_text(f"Loaded JSON: {self._load_uploaded_name}")
+        except Exception as exc:
+            self._load_uploaded_project = None
+            self._load_status_label.set_text(f"Invalid project file: {exc}")
+
+    def _handle_load_confirm(self) -> None:
+        if self._load_has_unsaved and not self._load_replace_confirm.value:
+            ui.notify("Confirm replacement of unsaved work.", type="warning")
+            return
+        if self._load_uploaded_project is None:
+            ui.notify("Upload a valid project JSON file.", type="warning")
+            return
+
+        self.state.current_project = self._load_uploaded_project
+        self.state.selected_node_id = self._load_uploaded_project.selected_node_id
+        self._ensure_llm_defaults()
+        self.state.status_bus.info(f"Loaded project from {self._load_uploaded_name}.")
+        self._load_dialog.close()
+        self.refresh_all()
+
 
 def build_layout(state: AppState) -> None:
     """Render the four-panel app shell."""
@@ -685,6 +798,12 @@ def build_layout(state: AppState) -> None:
             with ui.column().classes("h-full min-h-0").style("flex: 0 0 30%; min-width: 260px;"):
                 render_structure_panel(state, controller.on_select_node)
             with ui.column().classes("h-full min-h-0").style("flex: 1 1 auto; min-width: 0;"):
-                render_detail_panel(state, controller.on_story_text_change, controller.on_llm_rewrite_selected)
+                render_detail_panel(
+                    state,
+                    controller.on_story_text_input,
+                    controller.on_story_text_commit,
+                    controller.on_llm_rewrite_selected,
+                    controller.on_apply_tags_selected,
+                )
 
         render_status_panel(state)

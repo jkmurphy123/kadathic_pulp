@@ -69,3 +69,12 @@ python -m pulp_builder.app
   - selected project story form style
   - currently selected Lester Dent component title/description/guidance
   - currently selected LLM provider/model
+
+## Apply Tags
+
+- In the right detail panel, use `Apply Tags` to process inline bracket instructions.
+- Add tags in story text like:
+  - `[add room description here]`
+  - `[add ominous sound cue]`
+- Clicking `Apply Tags` replaces each bracket tag with LLM-generated text.
+- All non-tag text remains unchanged.

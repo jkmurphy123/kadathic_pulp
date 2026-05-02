@@ -4,7 +4,7 @@
   "story_form_id": "lovecraft_weird",
   "story_form_label": "Lovecraft Weird Tale",
   "created_at": "2026-05-01T22:35:22.163308Z",
-  "updated_at": "2026-05-01T23:09:50.611368Z",
+  "updated_at": "2026-05-02T10:47:28.642932Z",
   "import_info": {
     "source_filename": "horror1_project_txt_llm_2nd_pass.txt",
     "imported_at": "2026-05-01T22:35:22.163308Z",
@@ -57,7 +57,7 @@
               "notes": "Assigned from explicit Story Text tag."
             }
           ],
-          "story_text": "I submit this account with trembling hand and wary mind, for what I witnessed within the grim confines of the asylum defies all rational explanation. The director, an austere man whose eyes betrayed a haunted knowledge, escorted me through labyrinthine corridors lined with the deranged and the damned. Passing cell after cell, each hold a tortured soul swallowed by madness, he offered terse descriptions of their torments. Then we paused before a recent admission—a pale, somber girl scarcely past her childhood, clutching a hand-crafted doll with unsettling devotion. There was something in her gaze, vacant yet fevered, that whispered of eldritch horrors lurking just beyond human perception, as if the innocence of that doll masked a cosmic malevolence that had ensnared her fragile mind.",
+          "story_text": "I submit this account with trembling hand and wary mind, for what I witnessed within the grim confines of the asylum defies all rational explanation. I write these words with trembling hands, for I am the sole survivor of the ill-fated expedition to the forsaken depths of Carcosa’s Mire—a place whispered about in dread rituals and veiled prophecies. I came seeking knowledge, driven by the fevered dreams that plagued my nights, only to unearth horrors that no mortal mind was meant to fathom, horrors that now claw at the edges of my sanity. The director, an austere man whose eyes betrayed a haunted knowledge, escorted me through labyrinthine corridors lined with the deranged and the damned. Passing cell after cell, each hold a tortured soul swallowed by madness, he offered terse descriptions of their torments. Then we paused before a recent admission—a pale, somber girl scarcely past her childhood, clutching a hand-crafted doll with unsettling devotion. There was something in her gaze, vacant yet fevered, that whispered of eldritch horrors lurking just beyond human perception, as if the innocence of that doll masked a cosmic malevolence that had ensnared her fragile mind.",
           "children": []
         },
         {
@@ -495,7 +495,7 @@
       ]
     }
   ],
-  "selected_node_id": "q1-initial-trouble",
+  "selected_node_id": "q1-hook-with-menace",
   "dirty": false,
   "llm_provider": "openai_compatible",
   "llm_model": "gpt-4.1-mini"

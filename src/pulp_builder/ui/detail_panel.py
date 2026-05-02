@@ -10,8 +10,10 @@ from nicegui import events, ui
 @ui.refreshable
 def render_detail_panel(
     state,
-    on_story_text_change: Callable[[str], None],
+    on_story_text_input: Callable[[str], None],
+    on_story_text_commit: Callable[[], None],
     on_llm_rewrite: Callable[[], None],
+    on_apply_tags: Callable[[], None],
 ) -> None:
     """Render selected component details."""
 
@@ -53,10 +55,13 @@ def render_detail_panel(
                     ui.label(f"- {evidence.source}: {evidence.text}").classes("text-sm")
 
             def _handle_change(event: events.ValueChangeEventArguments) -> None:
-                on_story_text_change(event.value or "")
+                on_story_text_input(event.value or "")
 
             story_text_value = node.story_text if node.story_text else ""
-            ui.textarea("Story Text", value=story_text_value, on_change=_handle_change).props("autogrow").classes(
-                "w-full"
-            )
-            ui.button("LLM Rewrite", on_click=on_llm_rewrite).props("outline")
+            story_textarea = ui.textarea("Story Text", value=story_text_value, on_change=_handle_change).props(
+                "autogrow"
+            ).classes("w-full")
+            story_textarea.on("blur", lambda _: on_story_text_commit())
+            with ui.row().classes("gap-2"):
+                ui.button("LLM Rewrite", on_click=on_llm_rewrite).props("outline")
+                ui.button("Apply Tags", on_click=on_apply_tags).props("outline")
