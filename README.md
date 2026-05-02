@@ -50,6 +50,17 @@ python -m pulp_builder.app
   - a project save succeeds
 - On the next app launch/session, those provider/model defaults are loaded automatically.
 
+## Configurable Styles
+
+- Story styles are now loaded from `config/app_config.json` under `story_forms`.
+- On first app start, defaults are seeded into that file.
+- To add a new style, add a new object in `story_forms` with:
+  - `id`
+  - `label`
+  - `summary`
+  - `quarters` and `components` (same structure shape as existing forms)
+- Restart the app after editing the config file.
+
 ## LLM Provider Notes
 
 - `Mock` works offline and is useful for validating UI wiring.

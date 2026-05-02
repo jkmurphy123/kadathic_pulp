@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from nicegui import ui
 
+from pulp_builder.services.app_config_store import AppConfigStore
 from pulp_builder.services.importer import ImportService
 from pulp_builder.ui.layout import AppState, build_layout
 
@@ -35,6 +36,7 @@ def _build_sample_project():
 def main() -> None:
     """Run the NiceGUI application shell."""
 
+    AppConfigStore().ensure_exists()
     project = _build_sample_project()
     state = AppState(current_project=project, selected_node_id=project.selected_node_id)
     state.status_bus.info("Loaded sample project for Milestone 4 shell.")

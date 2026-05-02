@@ -228,3 +228,9 @@ def build_all_story_forms() -> dict[str, dict]:
             summary="Fast adventure with mission pressure, betrayal, and uncanny threat.",
         ),
     }
+
+
+def default_story_forms() -> list[dict]:
+    """Return default story forms as a list for config serialization."""
+
+    return list(build_all_story_forms().values())

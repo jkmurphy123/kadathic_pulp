@@ -19,3 +19,4 @@ def test_app_config_store_missing_file_returns_defaults(tmp_path) -> None:
 
     assert loaded.llm_provider is None
     assert loaded.llm_model is None
+    assert len(loaded.story_forms) >= 3

@@ -1,4 +1,447 @@
 {
   "llm_provider": "openai_compatible",
-  "llm_model": "gpt-4.1-mini"
+  "llm_model": "gpt-4.1-mini",
+  "story_forms": [
+    {
+      "id": "howard_adventure",
+      "label": "Howard Adventure",
+      "summary": "Sword-and-sorcery adventure focused on violent survival and treachery.",
+      "quarters": [
+        {
+          "quarter_id": "q1",
+          "title": "Opening Menace",
+          "description": "Open with danger, desire, and momentum.",
+          "components": [
+            {
+              "id": "q1-hook-with-menace",
+              "title": "Hook with Menace",
+              "description": "Open with immediate threat or unnerving momentum.",
+              "required": true,
+              "guidance_prompt": "Open with violent motion: ambush, raid, duel, storm, or bloodied discovery."
+            },
+            {
+              "id": "q1-hero-desire",
+              "title": "Hero Desire",
+              "description": "Clarify what the protagonist wants right now.",
+              "required": true,
+              "guidance_prompt": "What does the hero want now: treasure, vengeance, rescue, escape, or grim survival?"
+            },
+            {
+              "id": "q1-initial-trouble",
+              "title": "Initial Trouble",
+              "description": "Introduce first obstacle that blocks straightforward progress.",
+              "required": true,
+              "guidance_prompt": "What immediate force blocks the hero and raises bodily risk?"
+            },
+            {
+              "id": "q1-hint-of-deeper-menace",
+              "title": "Hint of Deeper Menace",
+              "description": "Signal that the visible threat is only surface-level.",
+              "required": true,
+              "guidance_prompt": "What sign suggests ancient sorcery or treachery behind the first conflict?"
+            }
+          ]
+        },
+        {
+          "quarter_id": "q2",
+          "title": "Deepening Trouble",
+          "description": "Attempts backfire as stakes and danger rise.",
+          "components": [
+            {
+              "id": "q2-first-attempt",
+              "title": "First Attempt",
+              "description": "Show the protagonist taking concrete action.",
+              "required": true,
+              "guidance_prompt": "Show a bold action through blade, stealth, or raw force."
+            },
+            {
+              "id": "q2-first-complication",
+              "title": "First Complication",
+              "description": "Complication worsens the cost of action.",
+              "required": true,
+              "guidance_prompt": "How does the hero's move trigger worse danger or opposition?"
+            },
+            {
+              "id": "q2-clue-or-pattern",
+              "title": "Clue or Pattern",
+              "description": "Reveal evidence that reframes the threat.",
+              "required": true,
+              "guidance_prompt": "What clue ties the conflict to cursed ruins, cults, relics, or old bloodlines?"
+            },
+            {
+              "id": "q2-rising-stakes",
+              "title": "Rising Stakes",
+              "description": "Raise personal and external consequences.",
+              "required": true,
+              "guidance_prompt": "What escalates from a fight to a struggle for survival and consequence?"
+            }
+          ]
+        },
+        {
+          "quarter_id": "q3",
+          "title": "Trap and Terrible Revelation",
+          "description": "Plans fail, betrayal strikes, and hidden truth emerges.",
+          "components": [
+            {
+              "id": "q3-reversal",
+              "title": "Reversal",
+              "description": "Turn the apparent advantage into sudden danger.",
+              "required": true,
+              "guidance_prompt": "Where does apparent advantage snap into near-defeat?"
+            },
+            {
+              "id": "q3-betrayal-or-false-safety",
+              "title": "Betrayal or False Safety",
+              "description": "Trust collapses or calm proves deceptive.",
+              "required": true,
+              "guidance_prompt": "Who betrays the hero, or what shelter becomes a trap?"
+            },
+            {
+              "id": "q3-terrible-revelation",
+              "title": "Terrible Revelation",
+              "description": "Expose the deeper truth behind the menace.",
+              "required": true,
+              "guidance_prompt": "What ancient truth makes the visible danger only the edge of something older and worse?"
+            },
+            {
+              "id": "q3-deathtrap-or-contact",
+              "title": "Deathtrap or Contact",
+              "description": "Force direct confrontation with lethal danger.",
+              "required": true,
+              "guidance_prompt": "Place the hero in a brutal trial with monster, sorcerer, or doomed chamber."
+            }
+          ]
+        },
+        {
+          "quarter_id": "q4",
+          "title": "Payoff and Final Sting",
+          "description": "Resolve conflict with a costly outcome and strong final note.",
+          "components": [
+            {
+              "id": "q4-final-confrontation",
+              "title": "Final Confrontation",
+              "description": "Deliver decisive clash with central threat.",
+              "required": true,
+              "guidance_prompt": "How does the hero force a decisive end through risk and violence?"
+            },
+            {
+              "id": "q4-cost-of-survival",
+              "title": "Cost of Survival",
+              "description": "Name what is lost, scarred, or sacrificed.",
+              "required": true,
+              "guidance_prompt": "What does survival cost in blood, allies, innocence, or future peace?"
+            },
+            {
+              "id": "q4-resolution",
+              "title": "Resolution",
+              "description": "Show immediate aftermath and practical outcome.",
+              "required": true,
+              "guidance_prompt": "Show who escapes, what is destroyed, and what immediate order is restored."
+            },
+            {
+              "id": "q4-final-sting",
+              "title": "Final Sting",
+              "description": "Leave an ominous or ironic final image.",
+              "required": true,
+              "guidance_prompt": "End with irony, omen, or surviving trace of menace."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lovecraft_weird",
+      "label": "Lovecraft Weird Tale",
+      "summary": "Weird testimony-driven horror with investigation and cosmic dread.",
+      "quarters": [
+        {
+          "quarter_id": "q1",
+          "title": "Opening Menace",
+          "description": "Open with danger, desire, and momentum.",
+          "components": [
+            {
+              "id": "q1-hook-with-menace",
+              "title": "Hook with Menace",
+              "description": "Open with immediate threat or unnerving momentum.",
+              "required": true,
+              "guidance_prompt": "Begin with testimony, warning, or record of a disturbing anomaly."
+            },
+            {
+              "id": "q1-hero-desire",
+              "title": "Hero Desire",
+              "description": "Clarify what the protagonist wants right now.",
+              "required": true,
+              "guidance_prompt": "What proof, explanation, or forbidden history is the narrator seeking?"
+            },
+            {
+              "id": "q1-initial-trouble",
+              "title": "Initial Trouble",
+              "description": "Introduce first obstacle that blocks straightforward progress.",
+              "required": true,
+              "guidance_prompt": "What first incident resists normal explanation and compels inquiry?"
+            },
+            {
+              "id": "q1-hint-of-deeper-menace",
+              "title": "Hint of Deeper Menace",
+              "description": "Signal that the visible threat is only surface-level.",
+              "required": true,
+              "guidance_prompt": "What detail implies a larger pattern beyond human scale?"
+            }
+          ]
+        },
+        {
+          "quarter_id": "q2",
+          "title": "Deepening Trouble",
+          "description": "Attempts backfire as stakes and danger rise.",
+          "components": [
+            {
+              "id": "q2-first-attempt",
+              "title": "First Attempt",
+              "description": "Show the protagonist taking concrete action.",
+              "required": true,
+              "guidance_prompt": "Show the investigation: archives, interviews, sites, or experiments."
+            },
+            {
+              "id": "q2-first-complication",
+              "title": "First Complication",
+              "description": "Complication worsens the cost of action.",
+              "required": true,
+              "guidance_prompt": "What result deepens dread instead of providing clarity?"
+            },
+            {
+              "id": "q2-clue-or-pattern",
+              "title": "Clue or Pattern",
+              "description": "Reveal evidence that reframes the threat.",
+              "required": true,
+              "guidance_prompt": "What recurring sign, text, lineage, or geometry links the events?"
+            },
+            {
+              "id": "q2-rising-stakes",
+              "title": "Rising Stakes",
+              "description": "Raise personal and external consequences.",
+              "required": true,
+              "guidance_prompt": "How do stakes escalate into social ruin, sanity collapse, or existential fear?"
+            }
+          ]
+        },
+        {
+          "quarter_id": "q3",
+          "title": "Trap and Terrible Revelation",
+          "description": "Plans fail, betrayal strikes, and hidden truth emerges.",
+          "components": [
+            {
+              "id": "q3-reversal",
+              "title": "Reversal",
+              "description": "Turn the apparent advantage into sudden danger.",
+              "required": true,
+              "guidance_prompt": "What assumption fails and leaves the narrator exposed?"
+            },
+            {
+              "id": "q3-betrayal-or-false-safety",
+              "title": "Betrayal or False Safety",
+              "description": "Trust collapses or calm proves deceptive.",
+              "required": true,
+              "guidance_prompt": "What trusted source, place, or method proves dangerously false?"
+            },
+            {
+              "id": "q3-terrible-revelation",
+              "title": "Terrible Revelation",
+              "description": "Expose the deeper truth behind the menace.",
+              "required": true,
+              "guidance_prompt": "What truth proves humanity is less central, safe, or sovereign than believed?"
+            },
+            {
+              "id": "q3-deathtrap-or-contact",
+              "title": "Deathtrap or Contact",
+              "description": "Force direct confrontation with lethal danger.",
+              "required": true,
+              "guidance_prompt": "Describe direct contact with the uncanny, whether physical, psychic, or visionary."
+            }
+          ]
+        },
+        {
+          "quarter_id": "q4",
+          "title": "Payoff and Final Sting",
+          "description": "Resolve conflict with a costly outcome and strong final note.",
+          "components": [
+            {
+              "id": "q4-final-confrontation",
+              "title": "Final Confrontation",
+              "description": "Deliver decisive clash with central threat.",
+              "required": true,
+              "guidance_prompt": "How does the narrator attempt to contain, flee, record, or deny the horror?"
+            },
+            {
+              "id": "q4-cost-of-survival",
+              "title": "Cost of Survival",
+              "description": "Name what is lost, scarred, or sacrificed.",
+              "required": true,
+              "guidance_prompt": "What sanity, identity, bloodline, or certainty is lost?"
+            },
+            {
+              "id": "q4-resolution",
+              "title": "Resolution",
+              "description": "Show immediate aftermath and practical outcome.",
+              "required": true,
+              "guidance_prompt": "What immediate ending is reached in testimony, silence, or disappearance?"
+            },
+            {
+              "id": "q4-final-sting",
+              "title": "Final Sting",
+              "description": "Leave an ominous or ironic final image.",
+              "required": true,
+              "guidance_prompt": "End with one final sign that the dread persists."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hybrid_weird_adventure",
+      "label": "Hybrid Weird Adventure",
+      "summary": "Fast adventure with mission pressure, betrayal, and uncanny threat.",
+      "quarters": [
+        {
+          "quarter_id": "q1",
+          "title": "Opening Menace",
+          "description": "Open with danger, desire, and momentum.",
+          "components": [
+            {
+              "id": "q1-hook-with-menace",
+              "title": "Hook with Menace",
+              "description": "Open with immediate threat or unnerving momentum.",
+              "required": true,
+              "guidance_prompt": "Open with a mission and immediate danger around an uncanny lead."
+            },
+            {
+              "id": "q1-hero-desire",
+              "title": "Hero Desire",
+              "description": "Clarify what the protagonist wants right now.",
+              "required": true,
+              "guidance_prompt": "What practical goal drives action: rescue, map, relic, debt, or escape?"
+            },
+            {
+              "id": "q1-initial-trouble",
+              "title": "Initial Trouble",
+              "description": "Introduce first obstacle that blocks straightforward progress.",
+              "required": true,
+              "guidance_prompt": "What obstacle forces risky movement into hostile ground?"
+            },
+            {
+              "id": "q1-hint-of-deeper-menace",
+              "title": "Hint of Deeper Menace",
+              "description": "Signal that the visible threat is only surface-level.",
+              "required": true,
+              "guidance_prompt": "What odd sign suggests the mission touches ancient horror?"
+            }
+          ]
+        },
+        {
+          "quarter_id": "q2",
+          "title": "Deepening Trouble",
+          "description": "Attempts backfire as stakes and danger rise.",
+          "components": [
+            {
+              "id": "q2-first-attempt",
+              "title": "First Attempt",
+              "description": "Show the protagonist taking concrete action.",
+              "required": true,
+              "guidance_prompt": "Show decisive action through expedition, infiltration, or pursuit."
+            },
+            {
+              "id": "q2-first-complication",
+              "title": "First Complication",
+              "description": "Complication worsens the cost of action.",
+              "required": true,
+              "guidance_prompt": "How does human error or opposition compound the danger?"
+            },
+            {
+              "id": "q2-clue-or-pattern",
+              "title": "Clue or Pattern",
+              "description": "Reveal evidence that reframes the threat.",
+              "required": true,
+              "guidance_prompt": "What clue links current peril to old ruins, cults, or hidden mechanisms?"
+            },
+            {
+              "id": "q2-rising-stakes",
+              "title": "Rising Stakes",
+              "description": "Raise personal and external consequences.",
+              "required": true,
+              "guidance_prompt": "How do stakes escalate from mission success to survival against the uncanny?"
+            }
+          ]
+        },
+        {
+          "quarter_id": "q3",
+          "title": "Trap and Terrible Revelation",
+          "description": "Plans fail, betrayal strikes, and hidden truth emerges.",
+          "components": [
+            {
+              "id": "q3-reversal",
+              "title": "Reversal",
+              "description": "Turn the apparent advantage into sudden danger.",
+              "required": true,
+              "guidance_prompt": "Where does momentum collapse into a trap or devastating setback?"
+            },
+            {
+              "id": "q3-betrayal-or-false-safety",
+              "title": "Betrayal or False Safety",
+              "description": "Trust collapses or calm proves deceptive.",
+              "required": true,
+              "guidance_prompt": "Who turns traitor, or what refuge reveals itself as compromised?"
+            },
+            {
+              "id": "q3-terrible-revelation",
+              "title": "Terrible Revelation",
+              "description": "Expose the deeper truth behind the menace.",
+              "required": true,
+              "guidance_prompt": "What hidden truth proves the mission was always part of a larger horror?"
+            },
+            {
+              "id": "q3-deathtrap-or-contact",
+              "title": "Deathtrap or Contact",
+              "description": "Force direct confrontation with lethal danger.",
+              "required": true,
+              "guidance_prompt": "Force close contact with the core threat in a high-risk set piece."
+            }
+          ]
+        },
+        {
+          "quarter_id": "q4",
+          "title": "Payoff and Final Sting",
+          "description": "Resolve conflict with a costly outcome and strong final note.",
+          "components": [
+            {
+              "id": "q4-final-confrontation",
+              "title": "Final Confrontation",
+              "description": "Deliver decisive clash with central threat.",
+              "required": true,
+              "guidance_prompt": "Show a frantic showdown combining physical action and weird danger."
+            },
+            {
+              "id": "q4-cost-of-survival",
+              "title": "Cost of Survival",
+              "description": "Name what is lost, scarred, or sacrificed.",
+              "required": true,
+              "guidance_prompt": "What does victory cost in people, body, trust, or purpose?"
+            },
+            {
+              "id": "q4-resolution",
+              "title": "Resolution",
+              "description": "Show immediate aftermath and practical outcome.",
+              "required": true,
+              "guidance_prompt": "Resolve the mission outcome and immediate survival status."
+            },
+            {
+              "id": "q4-final-sting",
+              "title": "Final Sting",
+              "description": "Leave an ominous or ironic final image.",
+              "required": true,
+              "guidance_prompt": "End on a sign that something old still watches or waits."
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
